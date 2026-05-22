@@ -204,13 +204,14 @@ body {
   margin-bottom: 0.4rem; padding: 0 0.2rem;
 }
 .day-total {
-  font-size: 0.78rem; font-weight: 700;
+  font-size: 0.72rem; font-weight: 600;
   color: #c0392b; opacity: 0.75;
   letter-spacing: 0; text-transform: none;
 }
 .day-total--split { display: flex; align-items: center; gap: 0.3rem; }
 .day-total-mine   { color: #f0948a; }
 .day-total-sep    { color: #ddd; }
+.day-total-label  { color: #bbb; font-weight: 600; }
 
 /* Stats date range picker */
 .stats-date-range {
@@ -419,6 +420,18 @@ body {
   z-index: 300; max-height: 180px; overflow-y: auto;
   box-shadow: 0 8px 24px rgba(0,0,0,0.1);
 }
+.suggestions-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.3rem 0.9rem 0.3rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+.suggestions-label { font-size: 0.68rem; color: #bbb; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.suggestions-dismiss {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.75rem; color: #214e99; font-weight: 600; padding: 0.15rem 0.3rem;
+  border-radius: 6px;
+}
+.suggestions-dismiss:hover { background: #eef2fb; }
 .suggestion-item {
   display: flex; justify-content: space-between; align-items: center;
   padding: 0.7rem 0.9rem; cursor: pointer; border-bottom: 1px solid #f5f5f5;
@@ -600,13 +613,18 @@ body {
   left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 480px;
   animation: slideInRight 0.25s ease;
-  background: #f0f2f5; z-index: 200; overflow-y: auto;
+  background: #f0f2f5; z-index: 200;
+  display: flex; flex-direction: column;
+  overflow: hidden;
 }
 .settings-page-header {
   display: flex; align-items: center; gap: 1rem;
-  padding: 1rem 1.25rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 1rem) 1.25rem 1rem;
   background: #214e99; color: white;
-  position: sticky; top: 0; z-index: 1;
+  flex-shrink: 0;
+}
+.settings-page-body {
+  flex: 1; overflow-y: auto;
 }
 .settings-back-btn {
   background: none; border: none; color: white;
@@ -714,13 +732,24 @@ body {
 
 /* ── Claim button ── */
 .shopping-claim-btn {
-  background: none; border: none; cursor: pointer;
-  color: #ccc; padding: 0.5rem; display: flex; flex-shrink: 0;
-  transition: color 0.15s; border-radius: 10px;
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 50%; border: 1.5px solid #ddd;
+  background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+  padding: 0;
 }
-.shopping-claim-btn:hover { color: #214e99; }
-.shopping-claim-btn.active { color: #214e99; }
-.shopping-claim-btn.other { color: #f9a825; cursor: default; }
+.on-my-way-text {
+  font-size: 0.48rem; font-weight: 700; line-height: 1.2;
+  text-align: center; color: #ccc; text-transform: uppercase;
+  letter-spacing: 0.01em; pointer-events: none;
+}
+.shopping-claim-btn:hover { border-color: #214e99; }
+.shopping-claim-btn:hover .on-my-way-text { color: #214e99; }
+.shopping-claim-btn.active { border-color: #214e99; background: #eef2fb; }
+.shopping-claim-btn.active .on-my-way-text { color: #214e99; }
+.shopping-claim-btn.other { border-color: #f9a825; cursor: default; }
+.shopping-claim-btn.other .on-my-way-text { color: #f9a825; }
 
 /* ── Claimed badge ── */
 .claimed-badge {

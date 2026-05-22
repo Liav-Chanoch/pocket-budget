@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Square, CheckSquare, Trash2, ShoppingCart as ListIcon, Settings as SettingsIcon, LogOut, Globe, BarChart2, Package as PackageIcon, Users, Navigation, ChevronRight, ClipboardList } from 'lucide-react';
+import { Plus, Square, CheckSquare, Trash2, ShoppingCart as ListIcon, Settings as SettingsIcon, LogOut, Globe, BarChart2, Package as PackageIcon, Users, ChevronRight, ClipboardList, Camera } from 'lucide-react';
 import {
   collection, addDoc, onSnapshot, deleteDoc, doc,
   query, orderBy, where, getDocs, updateDoc, setDoc, writeBatch
@@ -131,12 +131,12 @@ function ExpensesTab({ expenses, user, currency, onDelete, onPhotoClick, t, lang
                 <span>{formatDateStr(dateKey, t, lang)}</span>
                 {viewMode === 'all' ? (
                   <span className="day-total day-total--split">
-                    <span className="day-total-mine">My: {currency}{myDayTotal.toFixed(2)}</span>
+                    <span className="day-total-mine"><span className="day-total-label">My: </span>{currency}{myDayTotal.toFixed(2)}</span>
                     <span className="day-total-sep">·</span>
-                    <span>All: {currency}{dayTotal.toFixed(2)}</span>
+                    <span><span className="day-total-label">All: </span>{currency}{dayTotal.toFixed(2)}</span>
                   </span>
                 ) : (
-                  <span className="day-total">Total: {currency}{dayTotal.toFixed(2)}</span>
+                  <span className="day-total"><span className="day-total-label">Total: </span>{currency}{dayTotal.toFixed(2)}</span>
                 )}
               </div>
               {groups[dateKey].map(exp => (
@@ -646,9 +646,17 @@ function ShoppingListTab({ groupId, user, currency, country: initialCountry, onC
   useEffect(() => {
     return onSnapshot(
       query(collection(db, 'groups', groupId, 'shopping_list'), orderBy('addedAt', 'asc')),
-      snap => setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      snap => {
+        const newItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setItems(newItems);
+        // Clear stale estimation when list becomes empty
+        if (newItems.length === 0) {
+          setEstimation(null);
+          setEstimationOpen(true);
+        }
+      }
     );
-  }, [groupId]);
+  }, [groupId]); // eslint-disable-line
 
   useEffect(() => {
     getDocs(collection(db, 'groups', groupId, 'product_catalog', user.uid, 'items'))
@@ -898,7 +906,7 @@ function ShoppingListTab({ groupId, user, currency, country: initialCountry, onC
                   onClick={() => handleClaim(item)}
                   title={item.claimedBy && item.claimedBy !== user.uid ? t.alreadyClaimed : item.claimedBy ? t.unclaimBtn : t.claimBtn}
                 >
-                  <Navigation size={20} strokeWidth={1.5} />
+                  <span className="on-my-way-text">I'm<br/>on it</span>
                 </button>
                 <button className="shopping-delete" onClick={() => remove(item.id)}>
                   <Trash2 size={15} strokeWidth={1.5} />
@@ -1066,6 +1074,7 @@ function MyListsPage({ groupId, user, t, lang, onClose }) {
         )}
       </div>
 
+      <div className="settings-page-body">
       {!selectedList ? (
         <div className="tab-content">
           {lists.length === 0 ? (
@@ -1122,6 +1131,7 @@ function MyListsPage({ groupId, user, t, lang, onClose }) {
           )}
         </div>
       )}
+      </div>
 
       {showCreate && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowCreate(false)}>
@@ -1204,10 +1214,19 @@ function SundayPromptModal({ surplus, currency, onChoice, onDismiss, t }) {
 function usePullToRefresh() {
   useEffect(() => {
     let startY = 0;
-    function onTouchStart(e) { startY = e.touches[0].clientY; }
+    let startX = 0;
+    function onTouchStart(e) {
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+    }
     function onTouchEnd(e) {
-      const dist = e.changedTouches[0].clientY - startY;
-      if (dist > 90 && window.scrollY === 0) window.location.reload();
+      const distY = e.changedTouches[0].clientY - startY;
+      const distX = Math.abs(e.changedTouches[0].clientX - startX);
+      // Only reload if: pulled down 160px+, mostly vertical, page is at top,
+      // and touch started within the top 120px of screen (header area)
+      if (distY > 160 && distX < 40 && window.scrollY === 0 && startY < 120) {
+        window.location.reload();
+      }
     }
     document.addEventListener('touchstart', onTouchStart, { passive: true });
     document.addEventListener('touchend', onTouchEnd, { passive: true });
@@ -1335,8 +1354,11 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
   const maxTodaySpend  = dailyBudget * 2;
   const canStillSpend  = Math.max(0, todayBalance);
   const inOverdraft    = todayBalance < 0;
-  const balancePct     = dailyBudget > 0 ? Math.min(100, Math.max(0, (todayBalance / dailyBudget) * 100)) : 0;
-  const balanceColor   = todayBalance > dailyBudget * 0.5 ? '#4caf50' : todayBalance > dailyBudget * 0.2 ? '#ff9800' : '#f44336';
+  const totalAvailable = dailyBudget + runningBalance;
+  const balancePct     = totalAvailable > 0 ? Math.min(100, Math.max(0, (todayBalance / totalAvailable) * 100)) : 0;
+  const balanceColor   = todayBalance > totalAvailable * 0.3 ? '#4caf50'
+                       : todayBalance > totalAvailable * 0.1 ? '#ff9800'
+                       : '#f44336';
 
   function getMemberBalance(member) {
     const mt = expenses.filter(e => e.uid === member.uid && e.date === today).reduce((s, e) => s + e.amount, 0);
@@ -1478,6 +1500,12 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button className="logout-btn" onClick={() => window.location.reload()} title="Refresh">↺</button>
+            <button className="logout-btn" onClick={() => setShowStats(true)} title={t.tabStats}>
+              <BarChart2 size={16} strokeWidth={1.5} />
+            </button>
+            <button className="logout-btn" onClick={() => setShowMembers(true)} title={t.tabMembers}>
+              <Users size={16} strokeWidth={1.5} />
+            </button>
             <div className="header-menu-wrap" ref={menuRef}>
               <button className="logout-btn" onClick={() => setShowMenu(m => !m)} title="Menu">
                 <SettingsIcon size={16} strokeWidth={1.5} />
@@ -1494,14 +1522,8 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
                     <ClipboardList size={15} strokeWidth={1.5} /> {t.myLists}
                   </button>
                   <div className="dropdown-divider" />
-                  <button onClick={() => { setShowStats(true); setShowMenu(false); }}>
-                    <BarChart2 size={15} strokeWidth={1.5} /> {t.tabStats}
-                  </button>
                   <button onClick={() => { setShowProducts(true); setShowMenu(false); }}>
                     <PackageIcon size={15} strokeWidth={1.5} /> {t.tabProducts}
-                  </button>
-                  <button onClick={() => { setShowMembers(true); setShowMenu(false); }}>
-                    <Users size={15} strokeWidth={1.5} /> {t.tabMembers}
                   </button>
                   <div className="dropdown-divider" />
                   <button onClick={onLogout}>
@@ -1543,7 +1565,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
           <div className="budget-meta" style={{ marginTop: '0.5rem' }}>
             <div className="budget-meta-item">{t.spent}: <span>{currency}{myTodayTotal.toFixed(2)}</span></div>
             <div className="budget-meta-item">
-              {t.rollover}: <span style={{ color: runningBalance < 0 ? '#ff9999' : 'rgba(255,255,255,0.9)' }}>
+              {t.carriedOver}: <span style={{ color: runningBalance < 0 ? '#ff9999' : 'rgba(255,255,255,0.9)' }}>
                 {runningBalance >= 0 ? '+' : ''}{currency}{runningBalance.toFixed(2)}
               </span>
             </div>
@@ -1570,7 +1592,9 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
             </button>
             <div className="settings-page-title">{t.tabSettings}</div>
           </div>
-          <SettingsTab group={group} groupId={groupId} isAdmin={isAdmin} memberData={memberData} user={user} t={t} />
+          <div className="settings-page-body">
+            <SettingsTab group={group} groupId={groupId} isAdmin={isAdmin} memberData={memberData} user={user} t={t} />
+          </div>
         </div>
       )}
 
@@ -1582,7 +1606,9 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
             </button>
             <div className="settings-page-title">{t.tabStats}</div>
           </div>
-          <StatsTab expenses={expenses} user={user} currency={currency} today={today} t={t} lang={lang} viewMode={viewMode} onViewModeChange={setViewMode} />
+          <div className="settings-page-body">
+            <StatsTab expenses={expenses} user={user} currency={currency} today={today} t={t} lang={lang} viewMode={viewMode} onViewModeChange={setViewMode} />
+          </div>
         </div>
       )}
 
@@ -1594,7 +1620,9 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
             </button>
             <div className="settings-page-title">{t.tabProducts}</div>
           </div>
-          <ProductsTab groupId={groupId} user={user} currency={currency} t={t} />
+          <div className="settings-page-body">
+            <ProductsTab groupId={groupId} user={user} currency={currency} t={t} />
+          </div>
         </div>
       )}
 
@@ -1606,8 +1634,10 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
             </button>
             <div className="settings-page-title">{t.tabMembers}</div>
           </div>
-          <MembersTab members={allMembers} expenses={expenses} today={today} currency={currency}
-            group={group} groupId={groupId} isAdmin={isAdmin} getMemberBalance={getMemberBalance} t={t} />
+          <div className="settings-page-body">
+            <MembersTab members={allMembers} expenses={expenses} today={today} currency={currency}
+              group={group} groupId={groupId} isAdmin={isAdmin} getMemberBalance={getMemberBalance} t={t} />
+          </div>
         </div>
       )}
 
@@ -1631,10 +1661,19 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
                   type="text" placeholder={t.productNamePlaceholder}
                   value={form.description} onChange={e => handleDescriptionChange(e.target.value)}
                   onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  onKeyDown={e => { if (e.key === 'Escape') setShowSuggestions(false); }}
                   autoComplete="off" autoFocus required
                 />
                 {showSuggestions && (
                   <div className="suggestions-list">
+                    <div className="suggestions-header">
+                      <span className="suggestions-label">Suggestions</span>
+                      <button
+                        type="button"
+                        className="suggestions-dismiss"
+                        onMouseDown={e => { e.preventDefault(); setShowSuggestions(false); }}
+                      >✕ Use my text</button>
+                    </div>
                     {suggestions.map(item => (
                       <div key={item.id} className="suggestion-item" onMouseDown={e => { e.preventDefault(); selectSuggestion(item); }}>
                         <span className="suggestion-name">{item.name}</span>
@@ -1661,14 +1700,16 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
                 {form.photo ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <img src={form.photo} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 10 }} />
-                    <button type="button" className="btn-secondary" style={{ flex: 1, marginTop: 0, padding: '0.5rem' }}
-                      onClick={() => photoInputRef.current.click()}>{t.changePhoto}</button>
+                    <button type="button" className="btn-secondary" style={{ flex: 1, marginTop: 0, padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                      onClick={() => photoInputRef.current.click()}><Camera size={15} strokeWidth={1.5} />{t.changePhoto}</button>
                     <button type="button" className="btn-cancel" style={{ padding: '0.5rem 0.75rem', borderRadius: 10, border: 'none', background: '#f5f5f5', cursor: 'pointer' }}
                       onClick={() => setForm(f => ({ ...f, photo: null }))}>×</button>
                   </div>
                 ) : (
-                  <button type="button" className="btn-secondary" style={{ marginTop: 0 }}
-                    onClick={() => photoInputRef.current.click()}>📷 {t.addPhoto}</button>
+                  <button type="button" className="btn-secondary" style={{ marginTop: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                    onClick={() => photoInputRef.current.click()}>
+                    <Camera size={16} strokeWidth={1.5} />{t.addPhoto}
+                  </button>
                 )}
               </div>
               {addError && <div className="add-error">{addError}</div>}
