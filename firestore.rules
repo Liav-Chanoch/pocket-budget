@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /groups/{groupId} {
+      // Members can read their group; any logged-in user can query groups (needed for invite code lookup)
+      allow get:  if request.auth != null && isMember(groupId);
+      allow list: if request.auth != null;
+      // Allow creating a new group (document doesn't exist yet) if you set yourself as admin
+      allow create: if request.auth != null && request.resource.data.adminUid == request.auth.uid;
+      // Only admin can update/delete
+      allow update, delete: if request.auth != null && isAdmin(groupId);
+
+      match /members/{uid} {
+        allow read: if request.auth != null && isMember(groupId);
+        // Anyone logged in can create their own member doc (needed for joining)
+        allow create: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null && (request.auth.uid == uid || isAdmin(groupId));
+        allow delete: if request.auth != null && isAdmin(groupId);
+      }
+
+      match /expenses/{expenseId} {
+        allow read:   if request.auth != null && isMember(groupId);
+        allow create: if request.auth != null && isMember(groupId);
+        allow delete: if request.auth != null &&
+          (resource.data.uid == request.auth.uid || isAdmin(groupId));
+      }
+
+      match /daily_records/{recordId} {
+        allow read, write: if request.auth != null && isMember(groupId);
+      }
+
+      match /product_catalog/{uid}/items/{itemId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      match /shopping_list/{itemId} {
+        allow read, create: if request.auth != null && isMember(groupId);
+        allow update, delete: if request.auth != null && isMember(groupId);
+      }
+
+      match /named_lists/{listId} {
+        allow read, write: if request.auth != null && isMember(groupId);
+        match /items/{itemId} {
+          allow read, write: if request.auth != null && isMember(groupId);
+        }
+      }
+    }
+
+    function isMember(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    function isAdmin(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid == request.auth.uid;
+    }
+  }
+}
