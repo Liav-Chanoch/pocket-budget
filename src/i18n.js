@@ -31,8 +31,9 @@ export const translations = {
     todayBalance: "Today's balance",
     dailyBudget: 'Daily budget',
     weekly: 'weekly',
-    spent: 'Spent',
+    spent: 'Spent Today',
     rollover: 'Rollover',
+    carriedOver: 'Carried over',
     overdraft: (amount) => `In overdraft — still available today: ${amount}`,
 
     // Tabs
@@ -210,8 +211,9 @@ export const translations = {
     todayBalance: 'יתרה היום',
     dailyBudget: 'תקציב יומי',
     weekly: 'שבועי',
-    spent: 'הוצאות',
+    spent: 'הוצאות היום',
     rollover: 'צבירה',
+    carriedOver: 'חיסכון ימים קודמים',
     overdraft: (amount) => `חריגה — עוד ניתן היום: ${amount}`,
 
     // Tabs

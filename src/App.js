@@ -12,6 +12,7 @@ fetchLiveRates();
 
 function useAutoUpdate() {
   const currentHash = useRef(null);
+  const lastChecked = useRef(0);
   useEffect(() => {
     // Grab the hash of the current JS bundle from the loaded <script> tags
     const scriptEl = Array.from(document.scripts).find(s => /\/static\/js\/main\.[a-f0-9]+\.js/.test(s.src));
@@ -31,8 +32,24 @@ function useAutoUpdate() {
       } catch {}
     }
 
+    // Hourly background check
     const interval = setInterval(check, 3_600_000);
-    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+
+    // Visibility check: only run if the app has been in the background for
+    // at least 30 minutes — avoids reloads from quick tab switches
+    const THIRTY_MIN = 30 * 60 * 1000;
+    let hiddenAt = 0;
+    const onVisible = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        const awayMs = Date.now() - hiddenAt;
+        if (hiddenAt > 0 && awayMs >= THIRTY_MIN && Date.now() - lastChecked.current >= THIRTY_MIN) {
+          lastChecked.current = Date.now();
+          check();
+        }
+      }
+    };
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
