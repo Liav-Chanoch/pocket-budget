@@ -32,8 +32,17 @@ export const translations = {
     dailyBudget: 'Daily budget',
     weekly: 'weekly',
     spent: 'Spent Today',
+    reassignTitle: (desc) => `Move "${desc}" to:`,
+    reassignConfirm: (name) => `Move to ${name}`,
+    reassignCancel: 'Cancel',
     rollover: 'Rollover',
     carriedOver: 'Carried over',
+    availableToday: 'Available today',
+    availableInfoTitle: 'How is this calculated?',
+    availableInfoFromBalance: 'From today\'s balance',
+    availableInfoBorrow: 'Borrowable from tomorrow',
+    availableInfoTotal: 'Total available today',
+    availableInfoNote: 'The large number shows your net position. "Available today" is how much more you can spend before hitting the daily limit.',
     overdraft: (amount) => `In overdraft — still available today: ${amount}`,
 
     // Tabs
@@ -73,6 +82,13 @@ export const translations = {
     uploadAvatar: 'Upload Photo',
     changeAvatar: 'Change Photo',
 
+    // Borrow settings
+    borrowLabel: 'Borrow from tomorrow',
+    borrowDesc: 'Let today\'s balance go below zero by borrowing from the next day\'s budget',
+    borrowPercent: 'How much can you borrow?',
+    borrowPercentDesc: (n) => `Up to ${n}% of the daily budget`,
+    borrowSaved: 'Saved',
+
     // Settings
     yourSavingsBox: 'Your Savings Box',
     personalSavings: 'Personal Savings',
@@ -102,15 +118,15 @@ export const translations = {
 
     // Sunday prompt
     sundayTitle: '🌟 Weekly Check-in',
-    sundayDesc: (amount) => `You have ${amount} in accumulated surplus. What would you like to do with it?`,
-    keepCarrying: 'Keep carrying forward',
-    moveToPersonal: 'Move all to personal savings',
-    splitSavings: 'Split between savings',
+    sundayDesc: (amount) => `You saved ${amount} this week! What would you like to do with it?`,
+    keepCarrying: 'Keep it in my balance',
+    moveToPersonal: 'Move to personal savings',
+    moveToShared: 'Move to shared savings',
     remindLater: 'Remind me later',
-    moveAllDesc: (amount) => `Move all ${amount} to personal savings.`,
     confirmBtn: 'Confirm',
-    toPersonal: 'To personal savings',
-    toShared: 'To shared savings',
+    sundayDeficitTitle: '📋 Weekly Summary',
+    sundayDeficitDesc: (amount) => `You're carrying ${amount} debt into next week. It will be deducted from your upcoming budget.`,
+    gotIt: 'Got it',
 
     // Categories
     cat_food: 'Food & Drinks',
@@ -214,6 +230,15 @@ export const translations = {
     spent: 'הוצאות היום',
     rollover: 'צבירה',
     carriedOver: 'חיסכון ימים קודמים',
+    availableToday: 'זמין היום',
+    availableInfoTitle: 'איך זה מחושב?',
+    availableInfoFromBalance: 'מהיתרה של היום',
+    availableInfoBorrow: 'ניתן להשאיל ממחר',
+    availableInfoTotal: 'סך הכל זמין היום',
+    availableInfoNote: 'המספר הגדול מציג את המצב הנכסי שלך. "זמין היום" מראה כמה עוד ניתן להוציא לפני שמגיעים למגבלה היומית.',
+    reassignTitle: (desc) => `העבר את "${desc}" אל:`,
+    reassignConfirm: (name) => `העבר אל ${name}`,
+    reassignCancel: 'ביטול',
     overdraft: (amount) => `חריגה — עוד ניתן היום: ${amount}`,
 
     // Tabs
@@ -253,6 +278,13 @@ export const translations = {
     uploadAvatar: 'העלאת תמונה',
     changeAvatar: 'שינוי תמונה',
 
+    // Borrow settings
+    borrowLabel: 'השאלה ממחר',
+    borrowDesc: 'אפשר ליתרה של היום לרדת מתחת לאפס על ידי השאלה מתקציב הימים הבאים',
+    borrowPercent: 'כמה ניתן להשאיל?',
+    borrowPercentDesc: (n) => `עד ${n}% מהתקציב היומי`,
+    borrowSaved: 'נשמר',
+
     // Settings
     yourSavingsBox: 'קופת החיסכון שלך',
     personalSavings: 'חיסכון אישי',
@@ -282,15 +314,15 @@ export const translations = {
 
     // Sunday prompt
     sundayTitle: '🌟 בדיקה שבועית',
-    sundayDesc: (amount) => `יש לך ${amount} עודף צבור. מה תרצה לעשות איתו?`,
-    keepCarrying: 'המשך לצבור',
-    moveToPersonal: 'העבר הכל לחיסכון האישי',
-    splitSavings: 'פצל בין החסכונות',
+    sundayDesc: (amount) => `חסכת ${amount} השבוע! מה תרצה לעשות עם זה?`,
+    keepCarrying: 'השאר ביתרה שלי',
+    moveToPersonal: 'העבר לחיסכון האישי',
+    moveToShared: 'העבר לחיסכון המשותף',
     remindLater: 'הזכר לי מאוחר יותר',
-    moveAllDesc: (amount) => `העבר את כל ${amount} לחיסכון האישי.`,
     confirmBtn: 'אישור',
-    toPersonal: 'לחיסכון האישי',
-    toShared: 'לחיסכון המשותף',
+    sundayDeficitTitle: '📋 סיכום שבועי',
+    sundayDeficitDesc: (amount) => `אתה נכנס לשבוע הבא עם חוב של ${amount}. הוא יקוזז מהתקציב הקרוב שלך.`,
+    gotIt: 'הבנתי',
 
     // Categories
     cat_food: 'אוכל ושתייה',
