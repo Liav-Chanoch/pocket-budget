@@ -19,13 +19,16 @@ service cloud.firestore {
         allow read: if request.auth != null && isMember(groupId);
         // Anyone logged in can create their own member doc (needed for joining)
         allow create: if request.auth != null && request.auth.uid == uid;
-        allow update: if request.auth != null && (request.auth.uid == uid || isAdmin(groupId));
+        // Any group member can update any member doc (needed for balance adjustments on reassign)
+        allow update: if request.auth != null && isMember(groupId);
         allow delete: if request.auth != null && isAdmin(groupId);
       }
 
       match /expenses/{expenseId} {
         allow read:   if request.auth != null && isMember(groupId);
         allow create: if request.auth != null && isMember(groupId);
+        // Any group member can update an expense (needed for reassigning ownership)
+        allow update: if request.auth != null && isMember(groupId);
         allow delete: if request.auth != null &&
           (resource.data.uid == request.auth.uid || isAdmin(groupId));
       }

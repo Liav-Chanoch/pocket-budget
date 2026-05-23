@@ -62,15 +62,16 @@ function getCatLabel(catId, t) {
 
 // ─── Expenses Tab ─────────────────────────────────────────────────────────────
 
-function ExpenseItem({ exp, user, currency, onDelete, onPhotoClick, t, isOwn, viewMode }) {
+function ExpenseItem({ exp, user, currency, onDelete, onPhotoClick, onReassign, allMembers, t, isOwn, viewMode }) {
   const cat = getCat(exp.category);
   // In "everyone" mode: own expenses use a lighter red so you can distinguish them
   const amountColor = (viewMode === 'all' && isOwn) ? '#f0948a' : '#e74c3c';
+  const canReassign = allMembers && allMembers.length > 1;
   return (
     <div className="expense-item">
       <div
-        className="expense-icon"
-        style={{ background: cat.color + '22', overflow: 'hidden', padding: exp.photo ? 0 : undefined, cursor: exp.photo ? 'pointer' : 'default' }}
+        className={`expense-icon cat-icon--${exp.category}`}
+        style={{ overflow: 'hidden', padding: exp.photo ? 0 : undefined, cursor: exp.photo ? 'pointer' : 'default' }}
         onClick={() => exp.photo && onPhotoClick && onPhotoClick(exp.photo)}
       >
         {exp.photo
@@ -80,7 +81,13 @@ function ExpenseItem({ exp, user, currency, onDelete, onPhotoClick, t, isOwn, vi
       <div className="expense-info">
         <div className="expense-name">
           {exp.description}
-          <span className="who-badge">{(exp.addedBy || '?').split(' ')[0]}</span>
+          <span
+            className={`who-badge${exp.uid === user.uid ? ' who-badge--own' : ' who-badge--other'}`}
+            style={{ cursor: canReassign ? 'pointer' : 'default' }}
+            onClick={canReassign ? () => onReassign(exp) : undefined}
+          >
+            {(exp.addedBy || '?').split(' ')[0]}
+          </span>
         </div>
         <div className="expense-meta">{getCatLabel(exp.category, t)}</div>
       </div>
@@ -92,7 +99,7 @@ function ExpenseItem({ exp, user, currency, onDelete, onPhotoClick, t, isOwn, vi
   );
 }
 
-function ExpensesTab({ expenses, user, currency, onDelete, onPhotoClick, t, lang, viewMode, onViewModeChange }) {
+function ExpensesTab({ expenses, user, currency, onDelete, onPhotoClick, onReassign, allMembers, t, lang, viewMode, onViewModeChange }) {
   const today = getTodayStr();
   const [selDate, setSelDate] = useState(today);
 
@@ -140,7 +147,7 @@ function ExpensesTab({ expenses, user, currency, onDelete, onPhotoClick, t, lang
                 )}
               </div>
               {groups[dateKey].map(exp => (
-                <ExpenseItem key={exp.id} exp={exp} user={user} currency={currency} onDelete={onDelete} onPhotoClick={onPhotoClick} t={t} isOwn={exp.uid === user.uid} viewMode={viewMode} />
+                <ExpenseItem key={exp.id} exp={exp} user={user} currency={currency} onDelete={onDelete} onPhotoClick={onPhotoClick} onReassign={onReassign} allMembers={allMembers} t={t} isOwn={exp.uid === user.uid} viewMode={viewMode} />
               ))}
             </div>
           );
@@ -210,11 +217,11 @@ function StatsTab({ expenses, user, currency, today, t, lang, viewMode, onViewMo
           <div className="empty-state"><div className="empty-state-icon">📭</div>{t.noDataPeriod}</div>
         ) : catExps.map(exp => (
           <div key={exp.id} className="expense-item" style={{ marginBottom: '0.45rem' }}>
-            <div className="expense-icon" style={{ background: cat.color + '22' }}><CatIcon cat={cat} /></div>
+            <div className={`expense-icon cat-icon--${drillCategory}`}><CatIcon cat={cat} /></div>
             <div className="expense-info">
               <div className="expense-name">
                 {exp.description}
-                <span className="who-badge">{(exp.addedBy || '?').split(' ')[0]}</span>
+                <span className={`who-badge${exp.uid === user.uid ? ' who-badge--own' : ' who-badge--other'}`}>{(exp.addedBy || '?').split(' ')[0]}</span>
               </div>
               <div className="expense-meta">{formatDateStr(exp.date, t, lang)}</div>
             </div>
@@ -414,12 +421,24 @@ function ResetRolloverButton({ groupId, user }) {
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
 
 function SettingsTab({ group, groupId, isAdmin, memberData, user, t }) {
-  const [budgetMode,   setBudgetMode]   = useState(group.budgetMode   || 'daily');
-  const [budgetAmount, setBudgetAmount] = useState(String(group.budgetAmount || ''));
-  const [curr,         setCurr]         = useState(group.currency     || 'ILS');
-  const [country,      setCountry]      = useState(group.country      || 'de');
-  const [saved,        setSaved]        = useState(false);
+  const [budgetMode,    setBudgetMode]    = useState(group.budgetMode   || 'daily');
+  const [budgetAmount,  setBudgetAmount]  = useState(String(group.budgetAmount || ''));
+  const [curr,          setCurr]          = useState(group.currency     || 'ILS');
+  const [country,       setCountry]       = useState(group.country      || 'de');
+  const [saved,         setSaved]         = useState(false);
+  const [borrowEnabled, setBorrowEnabled] = useState(memberData.borrow_enabled ?? false);
+  const [borrowPercent, setBorrowPercent] = useState(memberData.borrow_percent ?? 100);
+  const [borrowSaved,   setBorrowSaved]   = useState(false);
   const avatarInputRef = useRef(null);
+
+  async function saveBorrowSettings(enabled, pct) {
+    await updateDoc(doc(db, 'groups', groupId, 'members', user.uid), {
+      borrow_enabled: enabled,
+      borrow_percent: pct,
+    });
+    setBorrowSaved(true);
+    setTimeout(() => setBorrowSaved(false), 2000);
+  }
 
   function handleAvatarChange(e) {
     const file = e.target.files[0];
@@ -468,6 +487,44 @@ function SettingsTab({ group, groupId, isAdmin, memberData, user, t }) {
         </div>
         <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
       </div>
+
+      <div className="stats-title" style={{ marginTop: '1.25rem' }}>{t.borrowLabel}</div>
+      <div className="settings-row">
+        <div>
+          <div className="settings-label">{t.borrowLabel}</div>
+          <div className="settings-sub">{t.borrowDesc}</div>
+        </div>
+        <label className="pill-toggle">
+          <input
+            type="checkbox"
+            checked={borrowEnabled}
+            onChange={e => {
+              const on = e.target.checked;
+              setBorrowEnabled(on);
+              saveBorrowSettings(on, borrowPercent);
+            }}
+          />
+          <span className="pill-toggle-track" />
+        </label>
+      </div>
+      {borrowEnabled && (
+        <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.4rem' }}>
+          <div className="settings-label">{t.borrowPercent}</div>
+          <div className="settings-sub">{t.borrowPercentDesc(borrowPercent)}</div>
+          <input
+            type="range" min="10" max="100" step="5"
+            value={borrowPercent}
+            className="borrow-slider"
+            onChange={e => setBorrowPercent(Number(e.target.value))}
+            onMouseUp={() => saveBorrowSettings(borrowEnabled, borrowPercent)}
+            onTouchEnd={() => saveBorrowSettings(borrowEnabled, borrowPercent)}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+            <span>10%</span><span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{borrowPercent}%</span><span>100%</span>
+          </div>
+          {borrowSaved && <div style={{ fontSize: '0.78rem', color: 'var(--color-accent-green-text)', textAlign: 'center' }}>✓ {t.borrowSaved}</div>}
+        </div>
+      )}
 
       <div className="stats-title" style={{ marginTop: '1rem' }}>{t.yourSavingsBox}</div>
       <div className="settings-row">
@@ -538,6 +595,8 @@ function SettingsTab({ group, groupId, isAdmin, memberData, user, t }) {
           <ResetRolloverButton groupId={groupId} user={user} />
         </>
       )}
+
+      <button className="dev-refresh-btn" onClick={() => window.location.reload()}>↺ Refresh app</button>
     </div>
   );
 }
@@ -582,7 +641,7 @@ function ProductsTab({ groupId, user, currency, t }) {
         const cat = getCat(p.category);
         return (
           <div key={p.id} className="expense-item" style={{ marginBottom: '0.45rem' }}>
-            <div className="expense-icon" style={{ background: cat.color + '22', overflow: 'hidden', padding: p.photo ? 0 : undefined }}>
+            <div className={`expense-icon cat-icon--${p.category}`} style={{ overflow: 'hidden', padding: p.photo ? 0 : undefined }}>
               {p.photo
                 ? <img src={p.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '11px' }} />
                 : <CatIcon cat={cat} />}
@@ -1156,14 +1215,80 @@ function MyListsPage({ groupId, user, t, lang, onClose }) {
   );
 }
 
+// ─── Reassign Expense Modal ───────────────────────────────────────────────────
+
+function ReassignModal({ exp, members, user, currency, onConfirm, onClose, t }) {
+  const others = members.filter(m => m.uid !== exp.uid);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-title" style={{ fontSize: '1rem' }}>{t.reassignTitle(exp.description)}</div>
+        <p style={{ color: '#888', fontSize: '0.82rem', margin: '0.25rem 0 1rem' }}>
+          {currency}{Number(exp.amount).toFixed(2)} · {exp.date}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          {others.map(m => (
+            <button key={m.uid} className="btn-outline" onClick={() => onConfirm(exp, m)}>
+              {(m.displayName || m.uid).split(' ')[0]}
+            </button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#bbb', fontSize: '0.85rem', cursor: 'pointer', marginTop: '1rem' }}>
+          {t.reassignCancel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Available Today Info Popup ──────────────────────────────────────────────
+// TO REVERT: remove <AvailableInfoPopup> usage + showAvailableInfo state + this component
+
+function AvailableInfoPopup({ todayBalance, canStillSpend, dailyBudget, currency, onClose, t }) {
+  const fromBalance = Math.max(0, todayBalance);
+  const borrowed    = canStillSpend - fromBalance;
+  const row = (label, value, bold) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.45rem', fontWeight: bold ? 700 : 400 }}>
+      <span style={{ color: '#555', fontSize: '0.85rem' }}>{label}</span>
+      <span style={{ fontSize: '0.85rem', color: bold ? '#1A1D23' : '#444' }}>{value}</span>
+    </div>
+  );
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 300 }}>
+        <div className="modal-title" style={{ fontSize: '1rem', marginBottom: '1rem' }}>{t.availableInfoTitle}</div>
+        {row(t.availableInfoFromBalance, `${currency}${fromBalance.toFixed(2)}`)}
+        {row(t.availableInfoBorrow,      `${currency}${borrowed.toFixed(2)}`)}
+        <div style={{ borderTop: '1px solid #EAEDF2', margin: '0.5rem 0' }} />
+        {row(t.availableInfoTotal, `${currency}${canStillSpend.toFixed(2)}`, true)}
+        <p style={{ color: '#888', fontSize: '0.78rem', lineHeight: 1.5, margin: '0.75rem 0 1rem' }}>{t.availableInfoNote}</p>
+        <button className="btn-primary" onClick={onClose}>{t.gotIt}</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Sunday Prompt ────────────────────────────────────────────────────────────
 
-function SundayPromptModal({ surplus, currency, onChoice, onDismiss, t }) {
-  const [step, setStep]               = useState('menu');
-  const [personalAmt, setPersonalAmt] = useState('');
-  const [sharedAmt,   setSharedAmt]   = useState('');
-  const amountStr = `${currency}${surplus.toFixed(2)}`;
+function SundayPromptModal({ mode, balance, currency, onChoice, onDismiss, t }) {
+  const amountStr = `${currency}${Math.abs(balance).toFixed(2)}`;
 
+  // Deficit: info only
+  if (mode === 'deficit') {
+    return (
+      <div className="modal-overlay">
+        <div className="modal">
+          <div className="modal-title">{t.sundayDeficitTitle}</div>
+          <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+            {t.sundayDeficitDesc(amountStr)}
+          </p>
+          <button className="btn-primary" onClick={onDismiss}>{t.gotIt}</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Surplus: 3 choices
   return (
     <div className="modal-overlay">
       <div className="modal">
@@ -1171,39 +1296,12 @@ function SundayPromptModal({ surplus, currency, onChoice, onDismiss, t }) {
         <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem', lineHeight: 1.5 }}>
           {t.sundayDesc(amountStr)}
         </p>
-        {step === 'menu' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            <button className="btn-primary"  onClick={() => onChoice('A', 0, 0)}>{t.keepCarrying}</button>
-            <button className="btn-outline"  onClick={() => setStep('B')}>{t.moveToPersonal}</button>
-            <button className="btn-outline"  onClick={() => setStep('C')}>{t.splitSavings}</button>
-            <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: '#bbb', fontSize: '0.85rem', cursor: 'pointer' }}>{t.remindLater}</button>
-          </div>
-        )}
-        {step === 'B' && (
-          <>
-            <p style={{ color: '#555', fontSize: '0.9rem', marginBottom: '1rem' }}>{t.moveAllDesc(amountStr)}</p>
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setStep('menu')}>{t.back}</button>
-              <button className="btn-primary" onClick={() => onChoice('B', surplus, 0)}>{t.confirmBtn}</button>
-            </div>
-          </>
-        )}
-        {step === 'C' && (
-          <>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <label className="input-label">{t.toPersonal}</label>
-              <input type="number" step="0.01" placeholder="0" value={personalAmt} onChange={e => setPersonalAmt(e.target.value)} className="split-input" />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="input-label">{t.toShared}</label>
-              <input type="number" step="0.01" placeholder="0" value={sharedAmt} onChange={e => setSharedAmt(e.target.value)} className="split-input" />
-            </div>
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setStep('menu')}>{t.back}</button>
-              <button className="btn-primary" onClick={() => onChoice('C', parseFloat(personalAmt) || 0, parseFloat(sharedAmt) || 0)}>{t.confirmBtn}</button>
-            </div>
-          </>
-        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          <button className="btn-primary" onClick={() => onChoice('A')}>{t.keepCarrying}</button>
+          <button className="btn-outline"  onClick={() => onChoice('B')}>{t.moveToPersonal}</button>
+          <button className="btn-outline"  onClick={() => onChoice('C')}>{t.moveToShared}</button>
+          <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: '#bbb', fontSize: '0.85rem', cursor: 'pointer', marginTop: '0.25rem' }}>{t.remindLater}</button>
+        </div>
       </div>
     </div>
   );
@@ -1256,7 +1354,9 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
   const [expenses,     setExpenses]    = useState([]);
   const [allMembers,   setAllMembers]  = useState([]);
   const [showAdd,      setShowAdd]     = useState(false);
-  const [showSunday,   setShowSunday]  = useState(false);
+  const [showSunday,        setShowSunday]        = useState(null); // null | 'surplus' | 'deficit'
+  const [showAvailableInfo, setShowAvailableInfo] = useState(false);
+  const [reassignExp,       setReassignExp]       = useState(null);
   const [viewMode,     setViewMode]    = useState('all');
   const [form,         setForm]        = useState({ amount: '', description: '', category: 'food', date: getTodayStr(), photo: null });
   const [addError,     setAddError]    = useState('');
@@ -1330,8 +1430,9 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
   useEffect(() => {
     if (!memberData || !isSunday()) return;
     if (memberData.last_sunday_prompt === today) return;
-    if ((memberData.running_balance || 0) <= 0) return;
-    setShowSunday(true);
+    const rb = memberData.running_balance || 0;
+    if (rb === 0) return;
+    setShowSunday(rb > 0 ? 'surplus' : 'deficit');
   }, [memberData?.last_sunday_prompt, memberData?.running_balance]); // eslint-disable-line
 
   // Real-time data
@@ -1351,8 +1452,14 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
   const myTodayTotal   = expenses.filter(e => e.uid === user.uid && e.date === today).reduce((s, e) => s + e.amount, 0);
   const runningBalance = memberData.running_balance || 0;
   const todayBalance   = runningBalance + dailyBudget - myTodayTotal;
-  const maxTodaySpend  = dailyBudget * 2;
-  const canStillSpend  = Math.max(0, todayBalance);
+  // Rule: end-of-day balance can never drop below −dailyBudget.
+  // Floor: today's balance can never go below -(dailyBudget × borrowFraction).
+  // borrowFraction = 0 when borrow is off (no overdraft allowed).
+  const borrowFraction = (memberData.borrow_enabled ?? false)
+    ? (memberData.borrow_percent ?? 100) / 100
+    : 0;
+  const canStillSpend  = Math.max(0, todayBalance + dailyBudget * borrowFraction);
+  const maxTodaySpend  = myTodayTotal + canStillSpend;
   const inOverdraft    = todayBalance < 0;
   const totalAvailable = dailyBudget + runningBalance;
   const balancePct     = totalAvailable > 0 ? Math.min(100, Math.max(0, (todayBalance / totalAvailable) * 100)) : 0;
@@ -1464,30 +1571,56 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
     }
   }
 
+  async function reassignExpense(exp, toMember) {
+    const batch      = writeBatch(db);
+    const expRef     = doc(db, 'groups', groupId, 'expenses', exp.id);
+    const fromRef    = doc(db, 'groups', groupId, 'members', exp.uid);
+    const toRef      = doc(db, 'groups', groupId, 'members', toMember.uid);
+    const fromMember = allMembers.find(m => m.uid === exp.uid);
+
+    // Update expense ownership
+    batch.update(expRef, {
+      uid:     toMember.uid,
+      addedBy: toMember.displayName || toMember.uid,
+    });
+
+    // Only adjust running_balance for already-processed days (not today)
+    if (exp.date !== today) {
+      batch.update(fromRef, { running_balance: (fromMember?.running_balance || 0) + exp.amount });
+      batch.update(toRef,   { running_balance: (toMember.running_balance   || 0) - exp.amount });
+    }
+
+    await batch.commit();
+    setReassignExp(null);
+  }
+
   // Sunday choice
-  async function handleSundayChoice(option, personalAmt, sharedAmt) {
+  async function handleSundayChoice(option) {
     const surplus   = memberData.running_balance || 0;
     const batch     = writeBatch(db);
     const memberRef = doc(db, 'groups', groupId, 'members', user.uid);
     const groupRef  = doc(db, 'groups', groupId);
 
     if (option === 'A') {
+      // Keep in balance — no balance change
       batch.update(memberRef, { last_sunday_prompt: today });
     } else if (option === 'B') {
-      batch.update(memberRef, { savings_box_personal: (memberData.savings_box_personal || 0) + surplus, running_balance: 0, last_sunday_prompt: today });
+      // Move all to personal savings
+      batch.update(memberRef, {
+        savings_box_personal: (memberData.savings_box_personal || 0) + surplus,
+        running_balance: 0,
+        last_sunday_prompt: today,
+      });
     } else if (option === 'C') {
-      const toPersonal = Math.min(personalAmt, surplus);
-      const toShared   = Math.min(sharedAmt, surplus - toPersonal);
-      batch.update(memberRef, { savings_box_personal: (memberData.savings_box_personal || 0) + toPersonal, running_balance: surplus - toPersonal - toShared, last_sunday_prompt: today });
-      if (toShared > 0) {
-        batch.update(groupRef, {
-          savings_box_shared: (group.savings_box_shared || 0) + toShared,
-          [`shared_savings_contributors.${user.uid}`]: ((group.shared_savings_contributors?.[user.uid]) || 0) + toShared,
-        });
-      }
+      // Move all to shared savings
+      batch.update(memberRef, { running_balance: 0, last_sunday_prompt: today });
+      batch.update(groupRef, {
+        savings_box_shared: (group.savings_box_shared || 0) + surplus,
+        [`shared_savings_contributors.${user.uid}`]: ((group.shared_savings_contributors?.[user.uid]) || 0) + surplus,
+      });
     }
     await batch.commit();
-    setShowSunday(false);
+    setShowSunday(null);
   }
 
   return (
@@ -1499,7 +1632,6 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
             <div className="header-user">{t.hi}, {(user.displayName || user.email).split(' ')[0]}</div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <button className="logout-btn" onClick={() => window.location.reload()} title="Refresh">↺</button>
             <button className="logout-btn" onClick={() => setShowStats(true)} title={t.tabStats}>
               <BarChart2 size={16} strokeWidth={1.5} />
             </button>
@@ -1552,20 +1684,25 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
               {group.budgetMode === 'weekly' && (
                 <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>{t.weekly}: {currency}{group.budgetAmount}</div>
               )}
+              <div className="budget-meta-item" style={{ marginTop: '0.35rem', justifyContent: 'flex-end' }}>
+                <span className="budget-meta-dot" style={{ background: canStillSpend > 0 ? '#4ADE80' : '#ff6b6b' }} />
+                {t.availableToday}:&nbsp;
+                <span style={{ fontWeight: 700, color: canStillSpend > 0 ? '#4ADE80' : '#ff9999' }}>{currency}{canStillSpend.toFixed(2)}</span>
+                <button onClick={() => setShowAvailableInfo(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 0 4px', color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', lineHeight: 1 }}>ⓘ</button>
+              </div>
             </div>
           </div>
-          {inOverdraft && (
-            <div className="overdraft-banner">
-              ⚠️ {t.overdraft(`${currency}${canStillSpend.toFixed(2)}`)}
-            </div>
-          )}
           <div className="progress-bar-bg">
             <div className="progress-bar-fill" style={{ width: `${balancePct}%`, background: balanceColor }} />
           </div>
           <div className="budget-meta" style={{ marginTop: '0.5rem' }}>
-            <div className="budget-meta-item">{t.spent}: <span>{currency}{myTodayTotal.toFixed(2)}</span></div>
             <div className="budget-meta-item">
-              {t.carriedOver}: <span style={{ color: runningBalance < 0 ? '#ff9999' : 'rgba(255,255,255,0.9)' }}>
+              <span className="budget-meta-dot" style={{ background: 'rgba(255,255,255,0.45)' }} />
+              {t.spent}: <span>{currency}{myTodayTotal.toFixed(2)}</span>
+            </div>
+            <div className="budget-meta-item">
+              <span className="budget-meta-dot" style={{ background: runningBalance < 0 ? '#ff6b6b' : '#4ADE80' }} />
+              {t.carriedOver}: <span style={{ color: runningBalance < 0 ? '#ff9999' : '#4ADE80' }}>
                 {runningBalance >= 0 ? '+' : ''}{currency}{runningBalance.toFixed(2)}
               </span>
             </div>
@@ -1581,7 +1718,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
         ))}
       </div>
 
-      {tab === t.tabExpenses && <ExpensesTab expenses={expenses} user={user} currency={currency} onDelete={deleteExpense} onPhotoClick={setLightboxPhoto} t={t} lang={lang} viewMode={viewMode} onViewModeChange={setViewMode} />}
+      {tab === t.tabExpenses && <ExpensesTab expenses={expenses} user={user} currency={currency} onDelete={deleteExpense} onPhotoClick={setLightboxPhoto} onReassign={setReassignExp} allMembers={allMembers} t={t} lang={lang} viewMode={viewMode} onViewModeChange={setViewMode} />}
       {tab === t.tabShopping && <ShoppingListTab groupId={groupId} user={user} currency={currency} country={group.country || 'de'} onCountryChange={c => updateDoc(doc(db, 'groups', groupId), { country: c })} estimation={shoppingEstimation} onEstimationChange={setShoppingEstimation} estimationOpen={shoppingEstimationOpen} onEstimationOpenChange={setShoppingEstimationOpen} t={t} />}
 
       {showSettings && (
@@ -1722,13 +1859,34 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
         </div>
       )}
 
+      {reassignExp && (
+        <ReassignModal
+          exp={reassignExp} members={allMembers} user={user} currency={currency}
+          onConfirm={reassignExpense} onClose={() => setReassignExp(null)} t={t}
+        />
+      )}
+
+      {showAvailableInfo && (
+        <AvailableInfoPopup
+          todayBalance={todayBalance} canStillSpend={canStillSpend}
+          dailyBudget={dailyBudget} currency={currency}
+          onClose={() => setShowAvailableInfo(false)} t={t}
+        />
+      )}
+
       {showSunday && (
         <SundayPromptModal
-          surplus={memberData.running_balance || 0} currency={currency}
-          onChoice={handleSundayChoice} t={t}
+          mode={showSunday}
+          balance={memberData.running_balance || 0}
+          currency={currency}
+          onChoice={handleSundayChoice}
+          t={t}
           onDismiss={async () => {
-            await updateDoc(doc(db, 'groups', groupId, 'members', user.uid), { last_sunday_prompt: today });
-            setShowSunday(false);
+            // "Remind me later" — only for surplus. Deficit always fully dismisses.
+            if (showSunday === 'deficit') {
+              await updateDoc(doc(db, 'groups', groupId, 'members', user.uid), { last_sunday_prompt: today });
+            }
+            setShowSunday(null);
           }}
         />
       )}
