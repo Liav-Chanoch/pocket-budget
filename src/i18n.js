@@ -77,10 +77,32 @@ export const translations = {
     adminLabel: 'admin',
     todayLabel: (amount) => `Today: ${amount}`,
 
-    // Profile / avatar
+    // Profile page
+    tabProfile: 'Profile',
     yourProfile: 'Your Profile',
     uploadAvatar: 'Upload Photo',
     changeAvatar: 'Change Photo',
+
+    // Scanned receipts
+    scannedReceipts: 'Scanned Receipts',
+    viewScannedReceipts: 'View Scanned Receipts',
+    noReceipts: 'No scanned receipts yet',
+    translateReceiptsLabel: 'Translate to English',
+    translateReceiptsDesc: 'Translate scanned receipt items to English',
+
+    // Receipt review modal
+    receiptScannedTitle: 'Scanned Receipt',
+    receiptItemCount: (n) => `${n} item${n === 1 ? '' : 's'}`,
+    receiptSaveSeparate: 'Save items separately',
+    receiptSaveSingle: 'Save as one entry',
+    receiptSelectedTotal: 'Selected total:',
+    receiptConfirmBtn: 'Confirm & add to expenses',
+    receiptDiscount: 'Discount',
+    receiptQlBadge: '✓ In list',
+    receiptSingleDefault: 'Shopping',
+    scanningReceipt: 'Scanning receipt...',
+    receiptSaveError: 'Error saving expenses: ',
+    saveReceipt: 'Save Receipt',
 
     // Borrow settings
     borrowLabel: 'Borrow from tomorrow',
@@ -93,6 +115,11 @@ export const translations = {
     yourSavingsBox: 'Your Savings Box',
     personalSavings: 'Personal Savings',
     personalSavingsDesc: 'Accumulated from weekly prompts',
+    addToBalance: 'Add to balance',
+    addFromBalance: 'Add from balance',
+    moveToShared: 'Move to shared savings',
+    savingsInsufficientFunds: 'Amount exceeds your savings',
+    balanceInsufficientFunds: 'Amount exceeds your balance',
     budgetSettingsLabel: 'Budget Settings',
     budgetSettingsDesc: 'Changes take effect from the next day',
     currencyLabel: 'Currency',
@@ -106,15 +133,22 @@ export const translations = {
     dailyPreview: 'Daily',
     saveSettingsBtn: 'Save Settings',
     savedBtn: '✓ Saved!',
+    migrateEuroBtn: 'Fix legacy Euro prices',
+    migrateEuroDesc: 'Mark all products without a currency as Euro so they convert correctly',
+    migrateEuroRunning: 'Fixing…',
+    migrateEuroDone: (n) => `✓ Fixed ${n} product${n === 1 ? '' : 's'}`,
+    migrateEuroNone: '✓ Nothing to fix',
 
     // Add expense
     addExpenseTitle: 'Add Expense',
     productNamePlaceholder: 'Product name',
     amountPlaceholder: (c) => `Amount in ${c}`,
     cancelBtn: 'Cancel',
+    deleteExpenseTitle: 'Remove expense?',
+    deleteExpenseConfirm: 'Remove',
     addBtn: 'Add',
     maxSpendError: (currency, max) =>
-      `Max daily spend is ${currency}${max}. You already used all of today's and tomorrow's budget. No more spending is possible for today bitch!`,
+      `You can only spend ${currency}${max} more today (including tomorrow's budget). This amount exceeds your available balance.`,
 
     // Sunday prompt
     sundayTitle: '🌟 Weekly Check-in',
@@ -146,7 +180,12 @@ export const translations = {
     tabProducts: 'Products',
     addProductBtn: '+ Add Product',
     noProducts: 'No products yet — add your first one!',
+    noProductsSearch: 'No products match your search',
     addProductTitle: 'Add Product',
+    searchProducts: 'Search products…',
+    addToExpenses: 'Add to Expenses',
+    addToQuickList: 'Add to Quick List',
+    addedToQuickList: 'Added to list ✓',
     deleteProduct: 'Delete',
     expenseDate: 'Date',
     addPhoto: 'Add Photo',
@@ -159,7 +198,7 @@ export const translations = {
     clearCompleted: 'Clear completed',
     boughtModalTitle: 'I bought it!',
     addAsExpense: 'Add as expense',
-    justDelete: 'Just delete',
+    justDelete: 'Just cross out',
 
     // Country setting
     countryLabel: 'Country',
@@ -185,6 +224,12 @@ export const translations = {
 
     // Named Lists
     myLists: 'My Lists',
+    notes: 'Notes',
+    personalNotes: 'Personal',
+    sharedNotes: 'Shared',
+    notesPlaceholderPersonal: 'Your private notes…',
+    notesPlaceholderShared: 'Notes visible to all group members…',
+    notesSharedHint: 'This note is shared between all members of the group',
     createList: 'Create list',
     listNamePlaceholder: 'List name',
     listEmojiPlaceholder: 'Emoji (optional)',
@@ -193,6 +238,68 @@ export const translations = {
     noLists: 'No lists yet — create one!',
     noListItems: 'Empty — add the first item',
     addListItem: 'Add item...',
+    otherLists: 'Other Lists',
+    deleteList: 'Delete list',
+
+    // Big Expenses
+    bigExpenses: 'Big Expenses',
+    addBigExpense: '+ Add Big Expense',
+    bigExpenseName: 'Label (e.g. Laptop)',
+    bigExpenseAmountLabel: 'Total amount',
+    bigExpenseWeeksLabel: 'Weeks',
+    bigExpensePerDay: '/day',
+    bigExpenseRemaining: 'remaining',
+    bigExpensePaidOff: 'Complete',
+    cancelBigExpense: 'Cancel expense',
+    noBigExpenses: 'No active big expenses',
+    payOffNow: 'Pay now',
+    payOffAmountLabel: 'Amount to clear',
+    payOffConfirm: 'Confirm payment',
+    payOffInsufficientBalance: 'Your balance is not sufficient for this amount.',
+    bigExpenseTooltipNote: (amount) => `Includes −${amount}/day for big expenses`,
+    bigExpenseEndsIn: (days) => `${days} day${days === 1 ? '' : 's'} left`,
+
+    // Nearby Shops
+    nearbyShops: 'Nearby Shops',
+    findNearbyShops: 'Nearby',
+    whereCanIGetThis: 'Where can I get this?',
+    editItem: 'Edit',
+    itemsNotHere: 'Not categorized',
+    findingShops: 'Searching…',
+    locationNeeded: 'Location access needed. Please allow it in your browser settings.',
+    shopsFailed: 'Could not analyze items. Please try again.',
+
+    // Recurring Expenses (Home Mode)
+    tabRecurring: 'Recurring',
+    recurringTitle: 'Recurring Expenses',
+    noRecurring: 'No recurring expenses yet — add your first one!',
+    addRecurring: '+ Add recurring expense',
+    recurringDescPlaceholder: 'e.g. Rent, Netflix, Electricity',
+    recurringTypeFixed: 'Fixed',
+    recurringTypeVariable: 'Variable',
+    recurringTypeFixedDesc: 'Deducted daily from balance (like big expenses)',
+    recurringTypeVariableDesc: 'Reminder only — not auto-deducted',
+    recurringDayOfMonth: 'Day of month',
+    recurringShared: 'Shared expense',
+    recurringSplitEqual: 'Split equally',
+    recurringSplitCustom: 'Choose amount',
+    recurringPerPerson: 'per person',
+    recurringYourShare: 'your share',
+    recurringNextPayment: 'Next',
+    tomorrow: 'Tomorrow',
+
+    // Income (Home Mode)
+    tabIncome: 'Income',
+    noIncome: 'No income entries yet — add your first one!',
+    addIncome: '+ Add income',
+    incomeDescPlaceholder: 'e.g. Salary, Freelance',
+    incomeFreqMonthly: 'Monthly',
+    incomeFreqWeekly: 'Weekly',
+    incomeFreqOnce: 'One-time',
+    incomeShared: 'Shared income',
+    incomeSharedDesc: 'Visible to all group members',
+    incomeSectionShared: 'Shared',
+    incomeSectionPersonal: 'Personal',
   },
 
   he: {
@@ -273,10 +380,32 @@ export const translations = {
     adminLabel: 'מנהל',
     todayLabel: (amount) => `היום: ${amount}`,
 
-    // Profile / avatar
+    // Profile page
+    tabProfile: 'פרופיל',
     yourProfile: 'הפרופיל שלך',
     uploadAvatar: 'העלאת תמונה',
     changeAvatar: 'שינוי תמונה',
+
+    // Scanned receipts
+    scannedReceipts: 'קבלות סרוקות',
+    viewScannedReceipts: 'צפה בקבלות סרוקות',
+    noReceipts: 'אין קבלות סרוקות עדיין',
+    translateReceiptsLabel: 'תרגם לאנגלית',
+    translateReceiptsDesc: 'תרגם פריטי קבלות סרוקות לאנגלית',
+
+    // Receipt review modal
+    receiptScannedTitle: 'קבלה סרוקה',
+    receiptItemCount: (n) => `${n} פריטים`,
+    receiptSaveSeparate: 'שמור פריטים בנפרד',
+    receiptSaveSingle: 'שמור כרשומה אחת',
+    receiptSelectedTotal: 'סה"כ נבחר:',
+    receiptConfirmBtn: 'אשר והוסף להוצאות',
+    receiptDiscount: 'הנחה',
+    receiptQlBadge: '✓ ברשימה',
+    receiptSingleDefault: 'קניות',
+    scanningReceipt: 'סורק קבלה...',
+    receiptSaveError: 'שגיאה בשמירת ההוצאות: ',
+    saveReceipt: 'שמור קבלה',
 
     // Borrow settings
     borrowLabel: 'השאלה ממחר',
@@ -289,6 +418,11 @@ export const translations = {
     yourSavingsBox: 'קופת החיסכון שלך',
     personalSavings: 'חיסכון אישי',
     personalSavingsDesc: 'נצבר מבחירות שבועיות',
+    addToBalance: 'הוסף ליתרה',
+    addFromBalance: 'הוסף מהיתרה',
+    moveToShared: 'העבר לחיסכון משותף',
+    savingsInsufficientFunds: 'הסכום עולה על החיסכון שלך',
+    balanceInsufficientFunds: 'הסכום עולה על היתרה שלך',
     budgetSettingsLabel: 'הגדרות תקציב',
     budgetSettingsDesc: 'השינויים ייכנסו לתוקף מהיום הבא',
     currencyLabel: 'מטבע',
@@ -302,15 +436,22 @@ export const translations = {
     dailyPreview: 'יומי',
     saveSettingsBtn: 'שמירת הגדרות',
     savedBtn: '✓ נשמר!',
+    migrateEuroBtn: 'תקן מחירים ישנים באירו',
+    migrateEuroDesc: 'סמן את כל המוצרים ללא מטבע כאירו כדי שיומרו נכון',
+    migrateEuroRunning: 'מתקן…',
+    migrateEuroDone: (n) => `✓ תוקנו ${n} מוצרים`,
+    migrateEuroNone: '✓ אין מה לתקן',
 
     // Add expense
     addExpenseTitle: 'הוספת הוצאה',
     productNamePlaceholder: 'שם המוצר',
     amountPlaceholder: (c) => `סכום ב${c}`,
     cancelBtn: 'ביטול',
+    deleteExpenseTitle: 'להסיר הוצאה?',
+    deleteExpenseConfirm: 'הסר',
     addBtn: 'הוספה',
     maxSpendError: (currency, max) =>
-      `המקסימום היומי הוא ${currency}${max}. השתמשת בכל תקציב היום ומחר. לא ניתן להוסיף יותר להיום!`,
+      `ניתן להוציא עוד ${currency}${max} בלבד היום (כולל תקציב מחר). הסכום חורג מהיתרה הזמינה שלך.`,
 
     // Sunday prompt
     sundayTitle: '🌟 בדיקה שבועית',
@@ -342,7 +483,12 @@ export const translations = {
     tabProducts: 'מוצרים',
     addProductBtn: '+ הוסף מוצר',
     noProducts: 'אין מוצרים עדיין — הוסף את הראשון!',
+    noProductsSearch: 'לא נמצאו מוצרים תואמים',
     addProductTitle: 'הוספת מוצר',
+    searchProducts: 'חיפוש מוצרים…',
+    addToExpenses: 'הוסף להוצאות',
+    addToQuickList: 'הוסף לרשימה',
+    addedToQuickList: 'נוסף לרשימה ✓',
     deleteProduct: 'מחיקה',
     expenseDate: 'תאריך',
     addPhoto: 'הוסף תמונה',
@@ -355,7 +501,7 @@ export const translations = {
     clearCompleted: 'נקה מסומנים',
     boughtModalTitle: 'קניתי!',
     addAsExpense: 'הוסף כהוצאה',
-    justDelete: 'מחק בלבד',
+    justDelete: 'סמן כנקנה בלבד',
 
     // Country setting
     countryLabel: 'מדינה',
@@ -381,6 +527,12 @@ export const translations = {
 
     // Named Lists
     myLists: 'הרשימות שלי',
+    notes: 'הערות',
+    personalNotes: 'אישי',
+    sharedNotes: 'משותף',
+    notesPlaceholderPersonal: 'הערות אישיות שלך…',
+    notesPlaceholderShared: 'הערות גלויות לכל חברי הקבוצה…',
+    notesSharedHint: 'הערה זו משותפת לכל חברי הקבוצה',
     createList: 'צור רשימה',
     listNamePlaceholder: 'שם הרשימה',
     listEmojiPlaceholder: 'אמוג\'י (אופציונלי)',
@@ -389,5 +541,67 @@ export const translations = {
     noLists: 'אין רשימות עדיין — צור אחת!',
     noListItems: 'ריק — הוסף את הפריט הראשון',
     addListItem: 'הוסף פריט...',
+    otherLists: 'רשימות נוספות',
+    deleteList: 'מחק רשימה',
+
+    // Big Expenses
+    bigExpenses: 'הוצאות גדולות',
+    addBigExpense: '+ הוסף הוצאה גדולה',
+    bigExpenseName: 'שם (לדוגמה: לפטופ)',
+    bigExpenseAmountLabel: 'סכום כולל',
+    bigExpenseWeeksLabel: 'שבועות',
+    bigExpensePerDay: '/יום',
+    bigExpenseRemaining: 'נותר',
+    bigExpensePaidOff: 'הושלם',
+    cancelBigExpense: 'ביטול הוצאה',
+    noBigExpenses: 'אין הוצאות גדולות פעילות',
+    payOffNow: 'שלם עכשיו',
+    payOffAmountLabel: 'סכום לסילוק',
+    payOffConfirm: 'אישור תשלום',
+    payOffInsufficientBalance: 'היתרה שלך אינה מספיקה לסכום זה.',
+    bigExpenseTooltipNote: (amount) => `כולל ניכוי −${amount}/יום להוצאות גדולות`,
+    bigExpenseEndsIn: (days) => `נותרו ${days} ימים`,
+
+    // Nearby Shops
+    nearbyShops: 'חנויות בקרבת מקום',
+    findNearbyShops: 'ליד',
+    whereCanIGetThis: 'איפה אפשר להשיג?',
+    editItem: 'ערוך',
+    itemsNotHere: 'לא מסווג',
+    findingShops: 'מחפש…',
+    locationNeeded: 'נדרשת גישה למיקום. אנא אפשר בדפדפן.',
+    shopsFailed: 'לא ניתן לנתח את הפריטים. נסה שוב.',
+
+    // Recurring Expenses (Home Mode)
+    tabRecurring: 'קבועות',
+    recurringTitle: 'הוצאות קבועות',
+    noRecurring: 'אין הוצאות קבועות עדיין — הוסף את הראשונה!',
+    addRecurring: '+ הוסף הוצאה קבועה',
+    recurringDescPlaceholder: 'לדוגמה: שכירות, נטפליקס, חשמל',
+    recurringTypeFixed: 'קבועה',
+    recurringTypeVariable: 'משתנה',
+    recurringTypeFixedDesc: 'מנוכה יומית מהיתרה (כמו הוצאות גדולות)',
+    recurringTypeVariableDesc: 'תזכורת בלבד — לא מנוכה אוטומטית',
+    recurringDayOfMonth: 'יום בחודש',
+    recurringShared: 'הוצאה משותפת',
+    recurringSplitEqual: 'חלוקה שווה',
+    recurringSplitCustom: 'בחר סכום',
+    recurringPerPerson: 'לאדם',
+    recurringYourShare: 'החלק שלך',
+    recurringNextPayment: 'הבא',
+    tomorrow: 'מחר',
+
+    // Income (Home Mode)
+    tabIncome: 'הכנסות',
+    noIncome: 'אין הכנסות עדיין — הוסף את הראשונה!',
+    addIncome: '+ הוסף הכנסה',
+    incomeDescPlaceholder: 'לדוגמה: משכורת, פרילנס',
+    incomeFreqMonthly: 'חודשי',
+    incomeFreqWeekly: 'שבועי',
+    incomeFreqOnce: 'חד-פעמי',
+    incomeShared: 'הכנסה משותפת',
+    incomeSharedDesc: 'גלויה לכל חברי הקבוצה',
+    incomeSectionShared: 'משותף',
+    incomeSectionPersonal: 'אישי',
   },
 };

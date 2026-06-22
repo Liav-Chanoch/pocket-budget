@@ -12,8 +12,12 @@ service cloud.firestore {
       allow list: if request.auth != null;
       // Allow creating a new group (document doesn't exist yet) if you set yourself as admin
       allow create: if request.auth != null && request.resource.data.adminUid == request.auth.uid;
-      // Only admin can update/delete
-      allow update, delete: if request.auth != null && isAdmin(groupId);
+      // Only admin can update/delete — except members can update shared notes fields
+      allow update: if request.auth != null && isAdmin(groupId)
+        || (request.auth != null && isMember(groupId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['sharedNotes', 'sharedNotesUpdatedAt', 'sharedNotesUpdatedBy']));
+      allow delete: if request.auth != null && isAdmin(groupId);
 
       match /members/{uid} {
         allow read: if request.auth != null && isMember(groupId);
@@ -38,7 +42,13 @@ service cloud.firestore {
       }
 
       match /product_catalog/{uid}/items/{itemId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        // Owner can always read/write their own catalog; group members can write (for receipt scan saving)
+        allow read:  if request.auth != null && (request.auth.uid == uid || isMember(groupId));
+        allow write: if request.auth != null && (request.auth.uid == uid || isMember(groupId));
+      }
+
+      match /receipts/{receiptId} {
+        allow read, write: if request.auth != null && isMember(groupId);
       }
 
       match /shopping_list/{itemId} {
@@ -52,6 +62,24 @@ service cloud.firestore {
           allow read, write: if request.auth != null && isMember(groupId);
         }
       }
+
+      match /big_expenses/{expId} {
+        allow read, write: if request.auth != null && isMember(groupId);
+      }
+
+      match /income/{incomeId} {
+        allow read:   if request.auth != null && isMember(groupId);
+        allow create: if request.auth != null && isMember(groupId);
+        allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      }
+
+      match /recurring_expenses/{recId} {
+        allow read:   if request.auth != null && isMember(groupId);
+        allow create: if request.auth != null && isMember(groupId);
+        allow delete: if request.auth != null &&
+          (resource.data.uid == request.auth.uid || isAdmin(groupId));
+      }
+
     }
 
     function isMember(groupId) {

@@ -19,7 +19,7 @@ export default function GroupSetup({ user, onGroupJoined }) {
       await setDoc(doc(db, 'groups', groupId), {
         adminUid: user.uid, budgetMode: 'daily', budgetAmount: 100,
         currency: 'ILS', inviteCode, savings_box_shared: 0,
-        shared_savings_contributors: {}, createdAt: new Date(),
+        shared_savings_contributors: {}, groupMode: 'trip', createdAt: new Date(),
       });
       await setDoc(doc(db, 'groups', groupId, 'members', user.uid), {
         uid: user.uid, displayName: user.displayName || user.email,
