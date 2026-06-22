@@ -1,4 +1,4 @@
-import { Utensils, ShoppingCart, Train, Ticket, ShoppingBag, Home, Sparkles, Package } from 'lucide-react';
+import { Utensils, ShoppingCart, Train, Ticket, ShoppingBag, Home, Sparkles, Package, Wine } from 'lucide-react';
 
 export const CURRENCIES = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' };
 
@@ -10,6 +10,7 @@ export const CATEGORIES = [
   { id: 'shopping',      label: 'Shopping',         icon: ShoppingBag,  color: '#f9ca24' },
   { id: 'accommodation', label: 'Accommodation',    icon: Home,         color: '#a29bfe' },
   { id: 'beauty',        label: 'Beauty',           icon: Sparkles,     color: '#e84393' },
+  { id: 'bar',           label: 'Bar Drinks',        icon: Wine,         color: '#e67e22' },
   { id: 'other',         label: 'Other',            icon: Package,      color: '#fd79a8' },
 ];
 
