@@ -217,6 +217,81 @@ body {
 }
 @media (max-width: 480px) { .add-btn { right: 1.4rem; } }
 
+/* ── Scan receipt FAB ── */
+.scan-btn {
+  position: fixed;
+  bottom: calc(1.4rem + 56px + 0.6rem);
+  right: calc(50% - 240px + 1.4rem);
+  width: 40px; height: 40px;
+  border-radius: 14px;
+  background: white;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  font-size: 1rem; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(45,84,184,0.18);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+@media (max-width: 480px) { .scan-btn { right: 1.4rem; } }
+
+/* ── Receipt review modal ── */
+.receipt-item-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.55rem 0; border-bottom: 1px solid var(--color-border);
+}
+.receipt-item-row:last-child { border-bottom: none; }
+.receipt-item-name {
+  flex: 1; font-size: 0.88rem; font-weight: 500;
+  border: none; background: none; outline: none;
+  font-family: inherit; color: var(--color-text-main);
+  min-width: 0;
+}
+.receipt-item-name:focus { background: var(--color-primary-light); border-radius: 6px; padding: 2px 4px; }
+.receipt-price-input {
+  width: 64px; text-align: right; font-size: 0.88rem; font-weight: 600;
+  border: 1px solid var(--color-border); border-radius: 6px;
+  padding: 2px 4px; font-family: inherit; color: var(--color-text-main);
+}
+.receipt-cat-pill {
+  font-size: 0.7rem; padding: 2px 7px; border-radius: 10px;
+  background: var(--color-primary-light); color: var(--color-primary);
+  border: none; cursor: pointer; white-space: nowrap; font-family: inherit;
+}
+.receipt-owner-btn {
+  font-size: 0.7rem; padding: 2px 6px; border-radius: 8px;
+  background: none; border: 1px solid var(--color-border);
+  color: var(--color-text-secondary); cursor: pointer; font-family: inherit;
+  white-space: nowrap;
+}
+.receipt-ql-badge {
+  font-size: 0.65rem; background: #e6f9ef; color: #1a7a45;
+  border-radius: 8px; padding: 1px 5px; white-space: nowrap;
+}
+.receipt-scanning-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 300; color: white; gap: 1rem; font-size: 1rem;
+}
+.receipt-spinner {
+  width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: white; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Receipt gallery ── */
+.receipt-card {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.65rem 0; border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+.receipt-card:last-child { border-bottom: none; }
+.receipt-thumb {
+  width: 44px; height: 44px; border-radius: 10px; object-fit: cover;
+  background: var(--color-primary-light); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
 /* ── Tabs ── */
 .tabs {
   display: flex;
@@ -336,6 +411,19 @@ body {
   padding: 3rem 1rem; font-size: 0.95rem;
 }
 .empty-state-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+/* Icon-only logo: wrapper clips the "pocket budget" text at the bottom */
+.empty-state-logo-wrap {
+  width: 150px;
+  height: 100px;   /* shows ~top 60% = icon, hides text */
+  overflow: hidden;
+  margin: 0 auto 0.75rem;
+}
+.empty-state-logo {
+  width: 150px;
+  display: block;
+  opacity: 0.09;
+  filter: invert(1);
+}
 
 /* ── Stats ── */
 .stats-section { padding: 0.9rem; flex: 1; overflow-y: auto; padding-bottom: 5rem; }
@@ -942,4 +1030,11 @@ body {
 }
 @media (max-width: 480px) {
   [dir="rtl"] .add-btn { left: 1.4rem; right: auto; }
+}
+[dir="rtl"] .scan-btn {
+  right: auto;
+  left: calc(50% - 240px + 1.4rem);
+}
+@media (max-width: 480px) {
+  [dir="rtl"] .scan-btn { left: 1.4rem; right: auto; }
 }

@@ -17,6 +17,20 @@ export async function fetchLiveRates() {
   } catch {}
 }
 
+// Map from app currency codes (group.currency values) to RATES_TO_EUR keys
+const CURRENCY_CODE_MAP = { EUR: 'eur', ILS: 'ils', GBP: 'gbp', USD: 'usd' };
+
+// Convert an amount between two currency codes (e.g. 'EUR' → 'ILS').
+// Falls back gracefully: if either currency is unknown, returns the original amount.
+export function convertAmount(amount, fromCurrency, toCurrency) {
+  if (!amount || fromCurrency === toCurrency) return amount;
+  const from = CURRENCY_CODE_MAP[fromCurrency];
+  const to   = CURRENCY_CODE_MAP[toCurrency];
+  if (!from || !to) return amount;
+  // Convert via EUR as base
+  return amount * RATES_TO_EUR[from] / RATES_TO_EUR[to];
+}
+
 export function toDisplayCurrency(price, fromCountryCode, displaySymbol) {
   if (!price) return price;
   const from = COUNTRY_CURRENCY[fromCountryCode] || 'eur';
@@ -61,6 +75,7 @@ export const PRICE_DB = [
   { k: ['tomato sauce', 'pasta sauce', 'רסק עגבניות'], de:1.50, il:8, fr:1.50, es:1.20, gb:1.50, us:3.00 },
   { k: ['canned tomatoes', 'עגבניות משומרות'],    de:0.80, il:5,   fr:0.90, es:0.70, gb:0.80, us:1.50 },
   { k: ['tuna', 'טונה'],                         de:1.50, il:8,   fr:1.50, es:1.20, gb:1.20, us:2.00 },
+  { k: ['peas', 'אפונה'],                         de:1.50, il:8,   fr:1.50, es:1.20, gb:1.20, us:2.50 },
   { k: ['beans', 'שעועית'],                      de:1.00, il:6,   fr:1.00, es:0.80, gb:1.00, us:1.50 },
   { k: ['lentils', 'עדשים'],                     de:1.50, il:8,   fr:1.50, es:1.20, gb:1.20, us:2.50 },
   { k: ['chickpeas', 'חומוס'],                   de:1.50, il:6,   fr:1.50, es:1.20, gb:1.20, us:2.00 },
