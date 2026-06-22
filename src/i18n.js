@@ -170,6 +170,7 @@ export const translations = {
     cat_shopping: 'Shopping',
     cat_accommodation: 'Accommodation',
     cat_beauty: 'Beauty',
+    cat_bar: 'Bar Drinks',
     cat_other: 'Other',
 
     // View mode
@@ -473,6 +474,7 @@ export const translations = {
     cat_shopping: 'קניות',
     cat_accommodation: 'לינה',
     cat_beauty: 'יופי',
+    cat_bar: 'בר ושתייה',
     cat_other: 'אחר',
 
     // View mode
