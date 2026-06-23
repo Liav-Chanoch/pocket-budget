@@ -270,7 +270,7 @@ export const translations = {
     locationNeeded: 'Location access needed. Please allow it in your browser settings.',
     shopsFailed: 'Could not analyze items. Please try again.',
 
-    // Recurring Expenses (Home Mode)
+    // Recurring Expenses (Household Mode)
     tabRecurring: 'Recurring',
     recurringTitle: 'Recurring Expenses',
     noRecurring: 'No recurring expenses yet — add your first one!',
@@ -289,7 +289,7 @@ export const translations = {
     recurringNextPayment: 'Next',
     tomorrow: 'Tomorrow',
 
-    // Income (Home Mode)
+    // Income (Household Mode)
     tabIncome: 'Income',
     noIncome: 'No income entries yet — add your first one!',
     addIncome: '+ Add income',
@@ -574,7 +574,7 @@ export const translations = {
     locationNeeded: 'נדרשת גישה למיקום. אנא אפשר בדפדפן.',
     shopsFailed: 'לא ניתן לנתח את הפריטים. נסה שוב.',
 
-    // Recurring Expenses (Home Mode)
+    // Recurring Expenses (Household Mode)
     tabRecurring: 'קבועות',
     recurringTitle: 'הוצאות קבועות',
     noRecurring: 'אין הוצאות קבועות עדיין — הוסף את הראשונה!',
@@ -593,7 +593,7 @@ export const translations = {
     recurringNextPayment: 'הבא',
     tomorrow: 'מחר',
 
-    // Income (Home Mode)
+    // Income (Household Mode)
     tabIncome: 'הכנסות',
     noIncome: 'אין הכנסות עדיין — הוסף את הראשונה!',
     addIncome: '+ הוסף הכנסה',
