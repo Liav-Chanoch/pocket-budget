@@ -2719,7 +2719,7 @@ function NotesPage({ groupId, user, memberData, group, lang, hasIndicator, onClo
   );
 }
 
-// ─── Income Page (Home Mode only) ────────────────────────────────────────────
+// ─── Income Page (Household Mode only) ────────────────────────────────────────────
 
 function IncomePage({ groupId, user, currency, t, lang, onClose }) {
   const [incomes,   setIncomes]   = useState([]);
@@ -2870,7 +2870,7 @@ function IncomePage({ groupId, user, currency, t, lang, onClose }) {
   );
 }
 
-// ─── Recurring Expenses Page (Home Mode only) ─────────────────────────────────
+// ─── Recurring Expenses Page (Household Mode only) ─────────────────────────────────
 
 function getNextPaymentDate(item) {
   const today = new Date();

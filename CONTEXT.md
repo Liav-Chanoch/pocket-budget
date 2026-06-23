@@ -61,7 +61,7 @@ firebase deploy --only firestore:rules --project pocket-budget-manager-dev
 firebase deploy --only firestore:rules --project pocket-budget-manager
 ```
 
-**CRITICAL**: All current Home Mode development goes **DEV only**. Never run `npm run deploy` (prod) for Home Mode work.
+**CRITICAL**: All current Household Mode development goes **DEV only**. Never run `npm run deploy` (prod) for Household Mode work.
 
 ---
 
@@ -236,7 +236,7 @@ Key rules:
 - PWA (installable, service worker, `Cache-Control: no-cache` on index.html)
 - CSS variable theming throughout
 
-### Home Mode (DEV only — requires `groupMode: 'home'` on group doc)
+### Household Mode (DEV only — requires `groupMode: 'home'` on group doc)
 
 - `groupMode` field on group doc — new groups default to `'trip'`; admin migration button in Settings (shown only when field is `null`)
 - `groupMode` normalized via `.toLowerCase()` in main Dashboard (handles `"Home"` vs `"home"`)
@@ -304,7 +304,7 @@ These existed before this session and do not prevent builds:
 ## 14. Architectural Rules & Things to Avoid
 
 1. **Deploy rules before hosting** whenever `firestore.rules` changes — a prior incident where subcollection rules were added caused all group reads to fail for all users.
-2. **Never deploy Home Mode work to PROD** — use `npm run deploy:dev` only.
+2. **Never deploy Household Mode work to PROD** — use `npm run deploy:dev` only.
 3. **No Firestore compound queries** — avoid composite index requirements by filtering client-side (e.g. `snap.docs.filter(e => e.createdBy === user.uid)`).
 4. **CSS vars everywhere** — hardcoded hex colors only where CSS vars resolve as transparent (known issue: nearby shops modal uses `#fff`/`#F8F9FA`).
 5. **All UI components live in `Dashboard.js`** — no separate component files.
@@ -315,7 +315,7 @@ These existed before this session and do not prevent builds:
 
 ---
 
-## 15. Home Mode — Planned But Not Yet Built
+## 15. Household Mode — Planned But Not Yet Built
 
 - Wire `autoDeduct: true` recurring expenses into the daily balance calculation (same pattern as big expenses — divide amount by days in period, deduct daily from `canStillSpend`)
 - Reminder/notification system for `variable` recurring expenses on their due date
