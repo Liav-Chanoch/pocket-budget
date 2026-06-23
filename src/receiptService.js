@@ -7,7 +7,7 @@
  */
 
 const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.REACT_APP_GEMINI_API_KEY}`;
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.REACT_APP_GEMINI_API_KEY}`;
 
 // Word overrides: always applied when translating to English.
 // Key = word as it appears on receipt, Value = what it should become.
