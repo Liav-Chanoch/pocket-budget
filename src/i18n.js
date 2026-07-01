@@ -259,6 +259,9 @@ export const translations = {
     payOffInsufficientBalance: 'Your balance is not sufficient for this amount.',
     bigExpenseTooltipNote: (amount) => `Includes −${amount}/day for big expenses`,
     bigExpenseEndsIn: (days) => `${days} day${days === 1 ? '' : 's'} left`,
+    bigExpenseHistory: 'History',
+    bigExpenseHistoryTitle: 'Big Expense History',
+    bigExpenseCancelled: 'Cancelled',
 
     // Nearby Shops
     nearbyShops: 'Nearby Shops',
@@ -563,6 +566,9 @@ export const translations = {
     payOffInsufficientBalance: 'היתרה שלך אינה מספיקה לסכום זה.',
     bigExpenseTooltipNote: (amount) => `כולל ניכוי −${amount}/יום להוצאות גדולות`,
     bigExpenseEndsIn: (days) => `נותרו ${days} ימים`,
+    bigExpenseHistory: 'היסטוריה',
+    bigExpenseHistoryTitle: 'היסטוריית הוצאות גדולות',
+    bigExpenseCancelled: 'בוטל',
 
     // Nearby Shops
     nearbyShops: 'חנויות בקרבת מקום',

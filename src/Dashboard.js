@@ -912,7 +912,7 @@ function ScannedReceiptsPage({ groupId, currency, t, lang, onClose }) {
 
 // ─── Settings Tab ──────────────────────────────────────────────────────────────
 
-function SettingsTab({ group, groupId, isAdmin, memberData, user, t, onShowReceipts, bigExpenses = [] }) {
+function SettingsTab({ group, groupId, isAdmin, memberData, user, t, onShowReceipts, onShowHistory, bigExpenses = [] }) {
   const [budgetMode,    setBudgetMode]    = useState(group.budgetMode   || 'daily');
   const [budgetAmount,  setBudgetAmount]  = useState(String(group.budgetAmount || ''));
   const [curr,          setCurr]          = useState(group.currency     || 'ILS');
@@ -1111,6 +1111,9 @@ function SettingsTab({ group, groupId, isAdmin, memberData, user, t, onShowRecei
           {t.addBigExpense}
         </button>
       )}
+      <button className="btn-outline" style={{ width: '100%', marginTop: '0.35rem', fontSize: '0.82rem', color: 'var(--color-text-muted)' }} onClick={onShowHistory}>
+        {t.bigExpenseHistory}
+      </button>
 
       {/* Borrow from tomorrow */}
       <div className="stats-title" style={{ marginTop: '1.25rem' }}>{t.borrowLabel}</div>
@@ -3433,6 +3436,62 @@ function AvailableInfoPopup({ todayBalance, canStillSpend, dailyBudget, currency
   );
 }
 
+// ─── Big Expense History Page ─────────────────────────────────────────────────
+
+function BigExpenseHistoryPage({ bigExpenses, currency, today, t, lang, onClose }) {
+  const sorted = [...bigExpenses].sort((a, b) => {
+    const tsA = a.createdAt?.toMillis?.() ?? 0;
+    const tsB = b.createdAt?.toMillis?.() ?? 0;
+    return tsB - tsA;
+  });
+
+  return (
+    <div className="settings-page" dir={lang === 'he' ? 'rtl' : 'ltr'}>
+      <div className="settings-page-header">
+        <button className="settings-back-btn" onClick={onClose}>
+          {lang === 'he' ? '→' : '←'} {t.back}
+        </button>
+        <div className="settings-page-title">{t.bigExpenseHistoryTitle}</div>
+      </div>
+      <div className="settings-page-body" style={{ padding: '1rem 1.25rem', paddingBottom: '5rem' }}>
+        {sorted.length === 0 && (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{t.noBigExpenses}</div>
+        )}
+        {sorted.map(exp => {
+          const daysElapsed = Math.max(0, Math.floor((new Date(today) - new Date(exp.startDate)) / 86400000));
+          const totalDays = exp.weeks * 7;
+          const timeDone = daysElapsed >= totalDays;
+          const cancelled = exp.active === false && !timeDone && !(exp.paidOff >= exp.totalAmount);
+          const paidOff = exp.active === false && !cancelled;
+          const isDone = timeDone || paidOff;
+          const remaining = isDone ? 0 : Math.max(0, exp.totalAmount - (exp.paidOff || 0) - daysElapsed * exp.dailyAmount);
+          const pct = totalDays > 0 ? Math.min(100, ((exp.paidOff || 0) / exp.totalAmount + Math.min(daysElapsed, totalDays) / totalDays) * 100) : 100;
+
+          let statusLabel, statusColor;
+          if (cancelled) { statusLabel = t.bigExpenseCancelled; statusColor = 'var(--color-text-muted)'; }
+          else if (isDone) { statusLabel = t.bigExpensePaidOff; statusColor = '#4ADE80'; }
+          else { statusLabel = `${currency}${remaining.toFixed(2)} ${t.bigExpenseRemaining}`; statusColor = 'var(--color-primary)'; }
+
+          return (
+            <div key={exp.id} style={{ padding: '0.75rem', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{exp.name}</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: statusColor }}>{statusLabel}</span>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                {currency}{exp.totalAmount?.toFixed(2)} · −{currency}{exp.dailyAmount?.toFixed(2)}{t.bigExpensePerDay} · {exp.startDate}
+              </div>
+              <div style={{ height: 4, background: 'var(--color-border)', borderRadius: 2 }}>
+                <div style={{ height: 4, width: `${pct}%`, background: cancelled ? 'var(--color-text-muted)' : isDone ? '#4ADE80' : 'var(--color-primary)', borderRadius: 2 }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Big Expense Sheet ────────────────────────────────────────────────────────
 
 function BigExpenseSheet({ bigExpenses, currency, isAdmin, today, t, groupId, canStillSpend, user, onClose }) {
@@ -3688,6 +3747,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
   const [showAvailableInfo,   setShowAvailableInfo]   = useState(false);
   const [bigExpenses,         setBigExpenses]         = useState([]);
   const [showBigExpenseSheet, setShowBigExpenseSheet] = useState(false);
+  const [showBigExpHistory,   setShowBigExpHistory]   = useState(false);
   const [reassignExp,         setReassignExp]         = useState(null);
   const [viewMode,     setViewMode]    = useState('all');
   const [form,         setForm]        = useState({ amount: '', description: '', category: 'food', date: getTodayStr(), photo: null });
@@ -3815,20 +3875,27 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
 
   useEffect(() => {
     return onSnapshot(
-      query(collection(db, 'groups', groupId, 'big_expenses'), where('active', '==', true)),
+      collection(db, 'groups', groupId, 'big_expenses'),
       snap => setBigExpenses(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(e => e.createdBy === user.uid))
     );
   }, [groupId]); // eslint-disable-line
 
+  // Active big expenses: not cancelled and not time-expired
+  const activeBigExpenses = bigExpenses.filter(exp => {
+    if (exp.active === false) return false;
+    const daysElapsed = Math.max(0, Math.floor((new Date(today) - new Date(exp.startDate)) / 86400000));
+    return daysElapsed < exp.weeks * 7;
+  });
+
   // Balance
   const myTodayTotal   = expenses.filter(e => e.uid === user.uid && e.date === today).reduce((s, e) => s + getDisplayAmount(e, group.currency), 0);
   const runningBalance = memberData.running_balance || 0;
-  const bigExpenseDailyTotal = bigExpenses.reduce((sum, exp) => {
+  const bigExpenseDailyTotal = activeBigExpenses.reduce((sum, exp) => {
     const daysElapsed = Math.floor((new Date(today) - new Date(exp.startDate)) / 86400000);
     if (daysElapsed < 0 || daysElapsed >= exp.weeks * 7) return sum;
     return sum + exp.dailyAmount;
   }, 0);
-  const bigExpenseTotalRemaining = bigExpenses.reduce((sum, exp) => {
+  const bigExpenseTotalRemaining = activeBigExpenses.reduce((sum, exp) => {
     const daysElapsed = Math.max(0, Math.floor((new Date(today) - new Date(exp.startDate)) / 86400000));
     const totalDays = exp.weeks * 7;
     if (daysElapsed >= totalDays) return sum;
@@ -4342,7 +4409,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
             <div className="settings-page-title">{t.tabSettings}</div>
           </div>
           <div className="settings-page-body">
-            <SettingsTab group={group} groupId={groupId} isAdmin={isAdmin} memberData={memberData} user={user} t={t} onShowReceipts={() => { setShowSettings(false); setShowReceipts(true); }} bigExpenses={bigExpenses} />
+            <SettingsTab group={group} groupId={groupId} isAdmin={isAdmin} memberData={memberData} user={user} t={t} onShowReceipts={() => { setShowSettings(false); setShowReceipts(true); }} bigExpenses={activeBigExpenses} onShowHistory={() => setShowBigExpHistory(true)} />
           </div>
         </div>
       )}
@@ -4429,7 +4496,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
         <ProfilePage
           group={group} groupId={groupId} memberData={memberData}
           user={user} isAdmin={isAdmin} t={t} lang={lang}
-          todayBalance={todayBalance} bigExpenses={bigExpenses}
+          todayBalance={todayBalance} bigExpenses={activeBigExpenses}
           onClose={() => setShowProfile(false)}
           onOpenList={(listId) => { setInitialListId(listId); setShowProfile(false); setShowLists(true); }}
         />
@@ -4444,10 +4511,17 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
 
       {showBigExpenseSheet && (
         <BigExpenseSheet
-          bigExpenses={bigExpenses} currency={currency} isAdmin={isAdmin}
+          bigExpenses={activeBigExpenses} currency={currency} isAdmin={isAdmin}
           today={today} t={t} groupId={groupId}
           canStillSpend={canStillSpend} user={user}
           onClose={() => setShowBigExpenseSheet(false)}
+        />
+      )}
+
+      {showBigExpHistory && (
+        <BigExpenseHistoryPage
+          bigExpenses={bigExpenses} currency={currency} today={today} t={t} lang={lang}
+          onClose={() => setShowBigExpHistory(false)}
         />
       )}
 
