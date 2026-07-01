@@ -22,6 +22,7 @@ jobs:
       - name: Build (dev)
         run: npm run build:dev
         env:
+          CI: false
           REACT_APP_GEMINI_API_KEY: ${{ secrets.REACT_APP_GEMINI_API_KEY }}
 
       - name: Deploy to Firebase DEV (hosting only)
