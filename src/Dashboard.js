@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Square, CheckSquare, Trash2, ShoppingCart as ListIcon, Settings as SettingsIcon, LogOut, Globe, BarChart2, Package as PackageIcon, Users, ChevronRight, ClipboardList, Camera, ScanLine, Receipt as ReceiptIcon, NotepadText, TrendingDown, TrendingUp, Repeat2, X, MapPin, Pencil } from 'lucide-react';
+import { Plus, Square, CheckSquare, Trash2, ShoppingCart as ListIcon, Settings as SettingsIcon, LogOut, Globe, BarChart2, Package as PackageIcon, Users, ChevronRight, ClipboardList, Camera, ScanLine, Receipt as ReceiptIcon, NotepadText, TrendingDown, TrendingUp, Repeat2, X, MapPin, Pencil, AlertTriangle } from 'lucide-react';
 import { scanReceipt, fetchGeminiPriceEstimate, categorizeItemsByStore } from './receiptService';
 import {
   collection, addDoc, onSnapshot, deleteDoc, doc, getDoc,
@@ -1189,7 +1189,13 @@ function SettingsTab({ group, groupId, isAdmin, memberData, user, t, onShowRecei
       )}
 
 
-      <button className="dev-refresh-btn" onClick={() => window.location.reload()}>↺ Refresh app</button>
+      <button className="dev-refresh-btn" onClick={async () => {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.update()));
+        }
+        window.location.reload(true);
+      }}>↺ Refresh app</button>
     </div>
   );
 }
@@ -3751,8 +3757,9 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
   const [reassignExp,         setReassignExp]         = useState(null);
   const [viewMode,     setViewMode]    = useState('all');
   const [form,         setForm]        = useState({ amount: '', description: '', category: 'food', date: getTodayStr(), photo: null });
-  const [addError,     setAddError]    = useState('');
-  const [catalog,      setCatalog]     = useState([]);
+  const [addError,       setAddError]       = useState('');
+  const [overBudgetToast, setOverBudgetToast] = useState(null);
+  const [catalog,        setCatalog]        = useState([]);
   const [suggestions,  setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionRef = useRef(null);
@@ -3974,11 +3981,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
     const amt = parseFloat(form.amount);
     if (!amt || isNaN(amt) || amt <= 0) return;
 
-    if (form.date === today && myTodayTotal + amt > maxTodaySpend) {
-      setAddError(t.maxSpendError(currency, maxTodaySpend.toFixed(2)));
-      return;
-    }
-
+    const willBeOverBudget = form.date === today && (todayBalance - amt) < 0;
     const expDate = form.date || today;
     const expDoc = {
       uid: user.uid, addedBy: user.displayName || user.email,
@@ -4011,6 +4014,11 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
 
     setForm({ amount: '', description: '', category: 'food', date: today, photo: null });
     setShowAdd(false);
+    if (willBeOverBudget) {
+      const overAmt = `${currency}${Math.abs(todayBalance - amt).toFixed(2)}`;
+      setOverBudgetToast(t.overBudgetSaved(overAmt));
+      setTimeout(() => setOverBudgetToast(null), 4000);
+    }
   }
 
   async function handleAddExpensePhoto(exp, file) {
@@ -4389,6 +4397,13 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
         )}
       </div>
 
+      {todayBalance < 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: '0.5rem 1rem 0', padding: '0.5rem 0.85rem', background: 'rgba(255,107,107,0.12)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10, fontSize: '0.82rem', color: '#ff9999' }}>
+          <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+          {t.overBudgetWarning(`${currency}${Math.abs(todayBalance).toFixed(2)}`)}
+        </div>
+      )}
+
       <div className="tabs">
         {TABS.map(tabName => (
           <button key={tabName} className={`tab${tab === tabName ? ' active' : ''}`} onClick={() => setTab(tabName)}>
@@ -4525,6 +4540,13 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
         />
       )}
 
+      {overBudgetToast && (
+        <div style={{ position: 'fixed', bottom: '5.5rem', left: '50%', transform: 'translateX(-50%)', background: '#b45309', color: 'white', padding: '0.6rem 1.1rem', borderRadius: 10, fontSize: '0.83rem', fontWeight: 500, zIndex: 9999, boxShadow: '0 4px 16px rgba(0,0,0,0.35)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <AlertTriangle size={14} />
+          {overBudgetToast}
+        </div>
+      )}
+
       <button className="scan-btn" onClick={() => scanInputRef.current?.click()} title="Scan receipt">
         <ScanLine size={20} strokeWidth={1.5} />
       </button>
@@ -4605,10 +4627,12 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
               </div>
               {(() => {
                 const enteredAmt = parseFloat(form.amount);
-                const overBudget = form.date === today && enteredAmt > 0 && enteredAmt > canStillSpend;
-                return overBudget ? (
-                  <div className="add-error">
-                    {t.maxSpendError(currency, canStillSpend.toFixed(2))}
+                const willOver = form.date === today && enteredAmt > 0 && enteredAmt > todayBalance;
+                const overAmt = willOver ? `${currency}${(enteredAmt - todayBalance).toFixed(2)}` : null;
+                return willOver ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#ffcc80', fontSize: '0.82rem', margin: '0.4rem 0' }}>
+                    <AlertTriangle size={13} />
+                    {t.overBudgetWarning(overAmt)}
                   </div>
                 ) : addError ? (
                   <div className="add-error">{addError}</div>
@@ -4616,14 +4640,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
               })()}
               <div className="modal-actions">
                 <button type="button" className="btn-cancel" onClick={() => setShowAdd(false)}>{t.cancelBtn}</button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={form.date === today && parseFloat(form.amount) > 0 && parseFloat(form.amount) > canStillSpend}
-                  style={{ opacity: (form.date === today && parseFloat(form.amount) > 0 && parseFloat(form.amount) > canStillSpend) ? 0.45 : 1 }}
-                >
-                  {t.addBtn}
-                </button>
+                <button type="submit" className="btn-primary">{t.addBtn}</button>
               </div>
             </form>
           </div>
