@@ -149,6 +149,8 @@ export const translations = {
     addBtn: 'Add',
     maxSpendError: (currency, max) =>
       `You can only spend ${currency}${max} more today (including tomorrow's budget). This amount exceeds your available balance.`,
+    overBudgetWarning: (amount) => `${amount} over today's budget`,
+    overBudgetSaved: (amount) => `Saved — you are ${amount} over today's budget`,
 
     // Sunday prompt
     sundayTitle: '🌟 Weekly Check-in',
@@ -456,6 +458,8 @@ export const translations = {
     addBtn: 'הוספה',
     maxSpendError: (currency, max) =>
       `ניתן להוציא עוד ${currency}${max} בלבד היום (כולל תקציב מחר). הסכום חורג מהיתרה הזמינה שלך.`,
+    overBudgetWarning: (amount) => `חריגה של ${amount} מהתקציב היומי`,
+    overBudgetSaved: (amount) => `נשמר — חרגת ב-${amount} מהתקציב היומי`,
 
     // Sunday prompt
     sundayTitle: '🌟 בדיקה שבועית',

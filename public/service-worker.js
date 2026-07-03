@@ -1,7 +1,11 @@
-const SHARE_CACHE = 'share-target-v1';
+const SHARE_CACHE = 'share-target-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', event => event.waitUntil(clients.claim()));
+self.addEventListener('activate', event => event.waitUntil(
+  caches.keys()
+    .then(keys => Promise.all(keys.filter(k => k !== SHARE_CACHE).map(k => caches.delete(k))))
+    .then(() => clients.claim())
+));
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
