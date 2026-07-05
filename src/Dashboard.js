@@ -3181,7 +3181,7 @@ function RecurringExpensesPage({ groupId, user, currency, isAdmin, members, t, l
 
 // ─── Receipt Review Modal ─────────────────────────────────────────────────────
 
-function ReceiptReviewModal({ result, members, user, currency, groupId, today, onConfirm, onClose, t }) {
+function ReceiptReviewModal({ result, members, user, currency, groupId, today, isDuplicate, onConfirm, onClose, t }) {
   const { items: rawItems, storeName, total, currency: receiptCurrency, receiptDate: detectedDate } = result;
   const displayCurrency = receiptCurrency ? getCurrencySymbol(receiptCurrency) : currency;
 
@@ -3190,8 +3190,7 @@ function ReceiptReviewModal({ result, members, user, currency, groupId, today, o
     const d = new Date(); d.setDate(d.getDate() - i);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   });
-  const initDate = detectedDate && past7.includes(detectedDate) ? detectedDate : today;
-  const [selectedDate, setSelectedDate] = useState(initDate);
+  const [selectedDate, setSelectedDate] = useState(today);
 
   function dayLabel(dateStr, idx) {
     if (idx === 0) return 'Today';
@@ -3230,6 +3229,13 @@ function ReceiptReviewModal({ result, members, user, currency, groupId, today, o
         <div className="modal-title" style={{ fontSize: '1rem', flexShrink: 0 }}>
           {t.receiptScannedTitle}{storeName ? ` — ${storeName}` : ''} ({t.receiptItemCount(checked.length)})
         </div>
+
+        {isDuplicate && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0, marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.35)', borderRadius: 8, fontSize: '0.8rem', color: '#fbbf24' }}>
+            <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+            This receipt looks like it was already scanned. Adding again will create duplicate expenses.
+          </div>
+        )}
 
         {/* Date picker */}
         <div style={{ flexShrink: 0, marginBottom: '0.5rem' }}>
@@ -3766,6 +3772,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
   const [receiptResult,      setReceiptResult]      = useState(null);
   const [receiptImageBase64, setReceiptImageBase64] = useState(null);
   const [showReceiptReview,  setShowReceiptReview]  = useState(false);
+  const [receiptIsDuplicate, setReceiptIsDuplicate] = useState(false);
 
   // Keep tab in sync when language changes
   useEffect(() => {
@@ -4105,6 +4112,23 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
       const qlSnap = await getDocs(collection(db, 'groups', groupId, 'shopping_list'));
       const quicklistItems = qlSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const result = await scanReceipt(base64, file.type || 'image/jpeg', quicklistItems, group.translateReceipts ?? true);
+
+      // Check for duplicate: same store + same total scanned in the last 30 days
+      let isDuplicate = false;
+      if (result.total != null) {
+        const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+        const recSnap = await getDocs(collection(db, 'groups', groupId, 'receipts'));
+        isDuplicate = recSnap.docs.some(d => {
+          const r = d.data();
+          const sameTotal = r.total != null && Math.abs(r.total - result.total) < 0.01;
+          const sameName  = result.storeName && r.storeName &&
+            r.storeName.toLowerCase() === result.storeName.toLowerCase();
+          const recentEnough = r.scannedAt?.toDate?.() > cutoff;
+          return sameTotal && sameName && recentEnough;
+        });
+      }
+
+      setReceiptIsDuplicate(isDuplicate);
       setReceiptResult(result);
       setReceiptImageBase64(base64);
       setShowReceiptReview(true);
@@ -4700,8 +4724,9 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
           currency={currency}
           groupId={groupId}
           today={today}
+          isDuplicate={receiptIsDuplicate}
           onConfirm={handleReceiptConfirm}
-          onClose={() => { setShowReceiptReview(false); setReceiptResult(null); setReceiptImageBase64(null); }}
+          onClose={() => { setShowReceiptReview(false); setReceiptResult(null); setReceiptImageBase64(null); setReceiptIsDuplicate(false); }}
           t={t}
         />
       )}
