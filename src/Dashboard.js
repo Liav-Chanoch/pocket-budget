@@ -3190,7 +3190,8 @@ function ReceiptReviewModal({ result, members, user, currency, groupId, today, i
     const d = new Date(); d.setDate(d.getDate() - i);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   });
-  const [selectedDate, setSelectedDate] = useState(today);
+  const initDate = detectedDate && past7.includes(detectedDate) ? detectedDate : today;
+  const [selectedDate, setSelectedDate] = useState(initDate);
 
   function dayLabel(dateStr, idx) {
     if (idx === 0) return 'Today';
