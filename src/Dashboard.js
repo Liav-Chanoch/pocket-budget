@@ -3366,13 +3366,9 @@ function ReceiptReviewModal({ result, members, user, currency, groupId, today, o
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{t.receiptSelectedTotal} {displayCurrency}{checkedTotal.toFixed(2)}</span>
           </div>
-          <button className="btn-primary" style={{ width: '100%', marginBottom: '0.5rem' }}
+          <button className="btn-primary" style={{ width: '100%', marginBottom: '0.5rem', touchAction: 'manipulation' }}
             disabled={checked.length === 0}
-            onClick={() => onConfirm({ items, saveMode, singleName, storeName, total: checkedTotal, receiptCurrency, receiptDate: selectedDate })}
-            onTouchEnd={e => {
-              e.preventDefault();
-              if (checked.length > 0) onConfirm({ items, saveMode, singleName, storeName, total: checkedTotal, receiptCurrency, receiptDate: selectedDate });
-            }}>
+            onClick={() => onConfirm({ items, saveMode, singleName, storeName, total: checkedTotal, receiptCurrency, receiptDate: selectedDate })}>
             {t.receiptConfirmBtn}
           </button>
           <button onClick={onClose} style={{ width: '100%', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.85rem', padding: '0.25rem' }}>
@@ -4213,7 +4209,8 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
       await batch.commit();
     } catch (err) {
       console.error('Receipt save error:', err);
-      alert(t.receiptSaveError + err.message);
+      setOverBudgetToast(t.receiptSaveError + err.message);
+      setTimeout(() => setOverBudgetToast(null), 5000);
       return;
     }
 
