@@ -3190,7 +3190,8 @@ function ReceiptReviewModal({ result, members, user, currency, groupId, today, o
     const d = new Date(); d.setDate(d.getDate() - i);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   });
-  const [selectedDate, setSelectedDate] = useState(today);
+  const initDate = detectedDate && past7.includes(detectedDate) ? detectedDate : today;
+  const [selectedDate, setSelectedDate] = useState(initDate);
 
   function dayLabel(dateStr, idx) {
     if (idx === 0) return 'Today';
@@ -3233,7 +3234,7 @@ function ReceiptReviewModal({ result, members, user, currency, groupId, today, o
         {/* Date picker */}
         <div style={{ flexShrink: 0, marginBottom: '0.5rem' }}>
           <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
-            {detectedDate && detectedDate !== today ? `Receipt date: ${detectedDate} — adjust if needed` : 'Date'}
+            {detectedDate ? `Date detected: ${detectedDate}` : 'Select date'}
           </div>
           <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '2px' }}>
             {past7.map((d, i) => (
