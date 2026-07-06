@@ -64,6 +64,10 @@ export const translations = {
     breakdownLabel: (amount) => `Breakdown · ${amount} total`,
     noDataPeriod: 'No data for this period',
     tapDrilldown: 'tap ›',
+    statsTrendTitle: 'Daily Spending',
+    statsChartCategory: 'By Category',
+    statsChartTrend: 'Trend',
+    statsAvgPerDay: (amount) => `Avg ${amount}/day`,
 
     // Members
     inviteCodeLabel: 'Invite Code',
@@ -373,6 +377,10 @@ export const translations = {
     breakdownLabel: (amount) => `פירוט · סה"כ ${amount}`,
     noDataPeriod: 'אין נתונים לתקופה זו',
     tapDrilldown: '‹ לחץ',
+    statsTrendTitle: 'הוצאה יומית',
+    statsChartCategory: 'לפי קטגוריה',
+    statsChartTrend: 'מגמה',
+    statsAvgPerDay: (amount) => `ממוצע ${amount}/יום`,
 
     // Members
     inviteCodeLabel: 'קוד הזמנה',

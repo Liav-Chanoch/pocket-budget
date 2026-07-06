@@ -266,8 +266,80 @@ function getFilterDateLabel(filter, today, lang) {
   return null;
 }
 
+// ─── Donut chart (category split) ─────────────────────────────────────────────
+function DonutChart({ data, total, currency, centerLabel, size = 168 }) {
+  const stroke = 22;
+  const r  = (size - stroke) / 2;
+  const cx = size / 2, cy = size / 2;
+  const circ = 2 * Math.PI * r;
+  const gap  = data.length > 1 ? 2.5 : 0; // small gap between segments (pro look)
+  let offset = 0;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block', flexShrink: 0 }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--color-border)" strokeWidth={stroke} opacity={0.4} />
+      <g transform={`rotate(-90 ${cx} ${cy})`}>
+        {data.map(seg => {
+          const len  = (seg.total / total) * circ;
+          const dash = Math.max(0.5, len - gap);
+          const el = (
+            <circle key={seg.id} cx={cx} cy={cy} r={r} fill="none"
+              stroke={seg.color} strokeWidth={stroke}
+              strokeDasharray={`${dash} ${circ - dash}`}
+              strokeDashoffset={-offset} />
+          );
+          offset += len;
+          return el;
+        })}
+      </g>
+      <text x={cx} y={cy - 2} textAnchor="middle" fontSize="1.35rem" fontWeight="700" fill="var(--color-text-main)">
+        {currency}{Math.round(total)}
+      </text>
+      <text x={cx} y={cy + 16} textAnchor="middle" fontSize="0.62rem" fill="var(--color-text-muted)"
+        style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        {centerLabel}
+      </text>
+    </svg>
+  );
+}
+
+// ─── Daily spending trend (bar chart) ─────────────────────────────────────────
+function TrendChart({ data, currency, lang }) {
+  const W = 320, H = 128;
+  const padTop = 18, padBottom = 20, padX = 2;
+  const chartH = H - padTop - padBottom;
+  const max = Math.max(...data.map(d => d.total), 1);
+  const n = data.length;
+  const slot = (W - padX * 2) / n;
+  const barW = Math.min(slot * 0.62, 26);
+  const fmtDate = (ds) => new Date(ds + 'T12:00:00').toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-GB', { day: 'numeric', month: 'short' });
+  return (
+    <svg width="100%" height="auto" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display: 'block' }}>
+      {/* max gridline */}
+      <line x1={0} y1={padTop} x2={W} y2={padTop} stroke="var(--color-border)" strokeWidth={1} strokeDasharray="3 3" opacity={0.6} />
+      <text x={W} y={padTop - 5} textAnchor="end" fontSize="0.6rem" fill="var(--color-text-muted)">{currency}{Math.round(max)}</text>
+      {/* baseline */}
+      <line x1={0} y1={padTop + chartH} x2={W} y2={padTop + chartH} stroke="var(--color-border)" strokeWidth={1} />
+      {data.map((d, i) => {
+        const h = (d.total / max) * chartH;
+        const x = padX + i * slot + (slot - barW) / 2;
+        const y = padTop + chartH - h;
+        return (
+          <rect key={d.date} x={x} y={y} width={barW} height={Math.max(h, 1)} rx={3}
+            fill={i === n - 1 ? 'var(--color-primary)' : 'var(--color-primary)'} opacity={i === n - 1 ? 1 : 0.55} />
+        );
+      })}
+      {/* first & last date labels */}
+      <text x={padX} y={H - 5} textAnchor="start" fontSize="0.6rem" fill="var(--color-text-muted)">{fmtDate(data[0].date)}</text>
+      {n > 1 && (
+        <text x={W - padX} y={H - 5} textAnchor="end" fontSize="0.6rem" fill="var(--color-text-muted)">{fmtDate(data[n - 1].date)}</text>
+      )}
+    </svg>
+  );
+}
+
 function StatsTab({ expenses, user, currency, today, t, lang, viewMode, onViewModeChange }) {
   const [filter,        setFilter]        = useState('all');
+  const [chartMode,     setChartMode]     = useState('category'); // 'category' | 'trend'
   const [drillCategory, setDrillCategory] = useState(null);
   const [fromDate,      setFromDate]      = useState('');
   const [toDate,        setToDate]        = useState('');
@@ -279,6 +351,15 @@ function StatsTab({ expenses, user, currency, today, t, lang, viewMode, onViewMo
     .filter(c => c.total > 0).sort((a, b) => b.total - a.total);
   const grandTotal = catTotals.reduce((s, c) => s + c.total, 0);
   const maxCat     = catTotals[0]?.total || 1;
+
+  // Daily spending trend (sorted by date, ascending)
+  const dailyMap = {};
+  filtered.forEach(e => { dailyMap[e.date] = (dailyMap[e.date] || 0) + getDisplayAmount(e, currency); });
+  const dailyData = Object.entries(dailyMap)
+    .map(([date, total]) => ({ date, total }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+  const canShowTrend = dailyData.length >= 2 && dailyData.length <= 62;
+  const avgPerDay = dailyData.length ? grandTotal / dailyData.length : 0;
 
   const filters = [
     { key: 'today',  label: t.filterToday },
@@ -371,24 +452,61 @@ function StatsTab({ expenses, user, currency, today, t, lang, viewMode, onViewMo
         <div className="empty-state"><div className="empty-state-icon"><BarChart2 size={40} strokeWidth={1} color="var(--color-text-muted)" /></div>{t.noDataPeriod}</div>
       ) : (
         <>
-          <div className="stats-title">{t.breakdownLabel(`${currency}${grandTotal.toFixed(2)}`)}</div>
-          {catTotals.map(cat => (
-            <button key={cat.id} className="category-row-btn" onClick={() => setDrillCategory(cat.id)}>
-              <div className="category-icon" style={{ color: cat.color }}><CatIcon cat={cat} size={20} /></div>
-              <div className="category-bar-wrap">
-                <div className="category-name">
-                  {cat.label} · {grandTotal > 0 ? Math.round((cat.total / grandTotal) * 100) : 0}%
-                </div>
-                <div className="category-bar-bg">
-                  <div className="category-bar-fill" style={{ width: `${(cat.total / maxCat) * 100}%`, background: cat.color }} />
+          {/* Chart-mode toggle (only show trend option when there are ≥2 days) */}
+          {canShowTrend && (
+            <div className="view-toggle" style={{ marginBottom: '0.85rem' }}>
+              <button className={`view-btn${chartMode === 'category' ? ' active' : ''}`} onClick={() => setChartMode('category')}>{t.statsChartCategory}</button>
+              <button className={`view-btn${chartMode === 'trend'    ? ' active' : ''}`} onClick={() => setChartMode('trend')}>{t.statsChartTrend}</button>
+            </div>
+          )}
+
+          {chartMode === 'trend' && canShowTrend ? (
+            <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '1rem 0.9rem 0.75rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text-main)' }}>{t.statsTrendTitle}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{t.statsAvgPerDay(`${currency}${avgPerDay.toFixed(0)}`)}</div>
+              </div>
+              <TrendChart data={dailyData} currency={currency} lang={lang} />
+            </div>
+          ) : (
+            <>
+              {/* Donut + legend */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '1rem', marginBottom: '1rem' }}>
+                <DonutChart data={catTotals} total={grandTotal} currency={currency} centerLabel={t.totalLabel} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: 0 }}>
+                  {catTotals.slice(0, 6).map(cat => (
+                    <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, background: cat.color, flexShrink: 0 }} />
+                      <span style={{ color: 'var(--color-text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{cat.label}</span>
+                      <span style={{ color: 'var(--color-text-muted)', fontWeight: 600, flexShrink: 0 }}>{grandTotal > 0 ? Math.round((cat.total / grandTotal) * 100) : 0}%</span>
+                    </div>
+                  ))}
+                  {catTotals.length > 6 && (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>+{catTotals.length - 6}</div>
+                  )}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <div className="category-amount">{currency}{cat.total.toFixed(2)}</div>
-                <div style={{ fontSize: '0.68rem', color: '#bbb' }}>{t.tapDrilldown}</div>
-              </div>
-            </button>
-          ))}
+
+              <div className="stats-title">{t.breakdownLabel(`${currency}${grandTotal.toFixed(2)}`)}</div>
+              {catTotals.map(cat => (
+                <button key={cat.id} className="category-row-btn" onClick={() => setDrillCategory(cat.id)}>
+                  <div className="category-icon" style={{ color: cat.color }}><CatIcon cat={cat} size={20} /></div>
+                  <div className="category-bar-wrap">
+                    <div className="category-name">
+                      {cat.label} · {grandTotal > 0 ? Math.round((cat.total / grandTotal) * 100) : 0}%
+                    </div>
+                    <div className="category-bar-bg">
+                      <div className="category-bar-fill" style={{ width: `${(cat.total / maxCat) * 100}%`, background: cat.color }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <div className="category-amount">{currency}{cat.total.toFixed(2)}</div>
+                    <div style={{ fontSize: '0.68rem', color: '#bbb' }}>{t.tapDrilldown}</div>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
         </>
       )}
     </div>
