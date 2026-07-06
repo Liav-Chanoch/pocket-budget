@@ -60,7 +60,7 @@ function Spinner() {
     <div style={{
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: '#214e99',
+      height: '100vh', background: '#143C37',
     }}>
       <img
         src="/logo-header-v4.png"
