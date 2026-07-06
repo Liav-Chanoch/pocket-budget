@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Square, CheckSquare, Trash2, ShoppingCart as ListIcon, Settings as SettingsIcon, LogOut, Globe, BarChart2, Package as PackageIcon, Users, ChevronRight, ClipboardList, Camera, ScanLine, Receipt as ReceiptIcon, NotepadText, TrendingDown, TrendingUp, Repeat2, X, MapPin, Pencil, AlertTriangle } from 'lucide-react';
+import { Plus, Square, CheckSquare, Trash2, ShoppingCart as ListIcon, Settings as SettingsIcon, LogOut, Globe, BarChart2, Package as PackageIcon, Users, ChevronRight, ClipboardList, Camera, ScanLine, Receipt as ReceiptIcon, NotepadText, TrendingDown, TrendingUp, Repeat2, X, MapPin, Pencil, AlertTriangle, Calendar } from 'lucide-react';
 import { scanReceipt, fetchGeminiPriceEstimate, categorizeItemsByStore } from './receiptService';
 import {
   collection, addDoc, onSnapshot, deleteDoc, doc, getDoc,
@@ -366,7 +366,7 @@ function StatsTab({ expenses, user, currency, today, t, lang, viewMode, onViewMo
     { key: 'week',   label: t.filter7Days },
     { key: 'month',  label: t.filterMonth },
     { key: 'all',    label: t.filterAll },
-    { key: 'custom', label: '📅 Range' },
+    { key: 'custom', label: 'Range', icon: Calendar },
   ];
 
   if (drillCategory) {
@@ -416,8 +416,9 @@ function StatsTab({ expenses, user, currency, today, t, lang, viewMode, onViewMo
         <button className={`view-btn${viewMode === 'all' ? ' active' : ''}`} onClick={() => onViewModeChange('all')}>👥 {t.viewAll}</button>
       </div>
       <div className="stats-filters">
-        {filters.map(({ key, label }) => (
-          <button key={key} className={`filter-pill${filter === key ? ' active' : ''}`} onClick={() => setFilter(key)}>
+        {filters.map(({ key, label, icon: Icon }) => (
+          <button key={key} className={`filter-pill${filter === key ? ' active' : ''}${Icon ? ' filter-pill--icon' : ''}`} onClick={() => setFilter(key)}>
+            {Icon && <Icon size={13} strokeWidth={2} />}
             {label}
           </button>
         ))}
@@ -4439,37 +4440,37 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
               {showMenu && (
                 <div className="header-dropdown">
                   <button onClick={() => { setShowMenu(false); setShowProfile(true); }}>
-                    <Users size={15} strokeWidth={1.5} /> {t.tabProfile}
+                    <span className="dd-ico"><Users size={16} strokeWidth={1.8} /></span> {t.tabProfile}
                   </button>
                   <button onClick={() => { setShowMenu(false); setShowSettings(true); }}>
-                    <SettingsIcon size={15} strokeWidth={1.5} /> {t.tabSettings}
+                    <span className="dd-ico"><SettingsIcon size={16} strokeWidth={1.8} /></span> {t.tabSettings}
                   </button>
                   <button onClick={() => { setLang(lang === 'en' ? 'he' : 'en'); setShowMenu(false); }}>
-                    <Globe size={15} strokeWidth={1.5} /> {lang === 'en' ? 'עברית' : 'English'}
+                    <span className="dd-ico"><Globe size={16} strokeWidth={1.8} /></span> {lang === 'en' ? 'עברית' : 'English'}
                   </button>
                   <button onClick={() => { setShowNotes(true); setShowMenu(false); }}>
-                    <NotepadText size={15} strokeWidth={1.5} /> {t.notes}
+                    <span className="dd-ico"><NotepadText size={16} strokeWidth={1.8} /></span> {t.notes}
                     {hasNotesIndicator && (
                       <span style={{ marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
                     )}
                   </button>
                   {groupMode === 'home' && (
                     <button onClick={() => { setShowIncome(true); setShowMenu(false); }}>
-                      <TrendingUp size={15} strokeWidth={1.5} /> {t.tabIncome}
+                      <span className="dd-ico"><TrendingUp size={16} strokeWidth={1.8} /></span> {t.tabIncome}
                     </button>
                   )}
                   {groupMode === 'home' && (
                     <button onClick={() => { setShowRecurring(true); setShowMenu(false); }}>
-                      <Repeat2 size={15} strokeWidth={1.5} /> {t.tabRecurring}
+                      <span className="dd-ico"><Repeat2 size={16} strokeWidth={1.8} /></span> {t.tabRecurring}
                     </button>
                   )}
                   <div className="dropdown-divider" />
                   <button onClick={() => { setShowProducts(true); setShowMenu(false); }}>
-                    <PackageIcon size={15} strokeWidth={1.5} /> {t.tabProducts}
+                    <span className="dd-ico"><PackageIcon size={16} strokeWidth={1.8} /></span> {t.tabProducts}
                   </button>
                   <div className="dropdown-divider" />
-                  <button onClick={onLogout}>
-                    <LogOut size={15} strokeWidth={1.5} /> {t.signOut}
+                  <button className="dd-signout" onClick={onLogout}>
+                    <span className="dd-ico dd-ico--danger"><LogOut size={16} strokeWidth={1.8} /></span> {t.signOut}
                   </button>
                 </div>
               )}
