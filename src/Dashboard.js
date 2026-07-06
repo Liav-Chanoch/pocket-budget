@@ -537,7 +537,7 @@ function MembersTab({ members, expenses, today, currency, group, groupId, isAdmi
           <div className="settings-sub">{t.inviteCodeDesc}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontWeight: 700, fontSize: '1.15rem', letterSpacing: '0.12em', color: '#214e99' }}>
+          <span style={{ fontWeight: 700, fontSize: '1.15rem', letterSpacing: '0.12em', color: 'var(--color-primary)' }}>
             {group.inviteCode}
           </span>
           <button onClick={copyCode} className="copy-btn">{copied ? '✓' : t.copy}</button>
@@ -581,7 +581,7 @@ function MembersTab({ members, expenses, today, currency, group, groupId, isAdmi
             return <div key={uid} className="settings-sub">{m?.displayName || uid}: {currency}{Number(amt).toFixed(2)}</div>;
           })}
         </div>
-        <div style={{ fontWeight: 700, fontSize: '1.3rem', color: '#214e99' }}>
+        <div style={{ fontWeight: 700, fontSize: '1.3rem', color: 'var(--color-primary)' }}>
           {currency}{(group.savings_box_shared || 0).toFixed(2)}
         </div>
       </div>
@@ -751,7 +751,7 @@ function ProfilePage({ group, groupId, memberData, user, isAdmin, t, lang, onClo
               <div className="settings-label">{t.personalSavings}</div>
               <div className="settings-sub">{t.personalSavingsDesc}</div>
             </div>
-            <div style={{ fontWeight: 700, fontSize: '1.3rem', color: '#214e99' }}>
+            <div style={{ fontWeight: 700, fontSize: '1.3rem', color: 'var(--color-primary)' }}>
               {currency}{personalSavings.toFixed(2)}
             </div>
           </div>
@@ -2723,7 +2723,7 @@ function MyListsPage({ groupId, user, t, lang, onClose, initialListId = null }) 
                 <div key={item.id} className={`shopping-item${item.checked ? ' checked' : ''}`}>
                   <button className="shopping-check" onClick={() => toggleListItem(item.id, item.checked)}>
                     {item.checked
-                      ? <CheckSquare size={22} strokeWidth={1.5} color="#214e99" />
+                      ? <CheckSquare size={22} strokeWidth={1.5} color="#BE4B13" />
                       : <Square size={22} strokeWidth={1.5} color="#bbb" />}
                   </button>
                   <span className="shopping-text">{item.text}</span>
