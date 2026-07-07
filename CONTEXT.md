@@ -1,6 +1,43 @@
 # Pocket Budget — Session Context Dump
 
-> Last updated: 2026-06-23. Use this to onboard a new Claude Code session with zero ramp-up.
+> Last updated: 2026-07-06. Use this to onboard a new Claude Code session with zero ramp-up.
+> Sections below the "SESSION UPDATE" block may be older (dated 2026-06-23); the update block is authoritative where they conflict.
+
+---
+
+## SESSION UPDATE — 2026-07-06
+
+### Deploy rules (IMPORTANT)
+- **Always deploy to PROD** unless told DEV. Command:
+  `npm run build && npx firebase-tools deploy --only hosting --project pocket-budget-manager`
+- Do NOT rely on GitHub Actions for prod — it deploys to DEV only.
+- Caution: a parallel session once deployed a **stale build to prod**, wiping live design. Local git `main` is source of truth. After any prod deploy, verify live bundle:
+  `curl -s https://pocket-budget-manager.web.app/index.html | grep -o 'main\.[a-z0-9]*\.js'` then grep that JS for a known new token (e.g. `statsChartTrend`).
+
+### Shipped this session (all on PROD + pushed to GitHub main)
+1. **Big expenses**: paid/expired hidden from home/settings/profile. New `BigExpenseHistoryPage` (all incl. paid/cancelled) via "History" button in SettingsTab. `activeBigExpenses` = filter `active !== false` AND not time-expired. Firestore query for `big_expenses` no longer filters `active` (need all for history).
+2. **Over-budget UX**: expense add NEVER blocked. Amber inline warning in add form when amount > `todayBalance`. Post-save orange toast (`overBudgetToast` state) when balance goes negative. Persistent red banner on home when `todayBalance < 0`.
+3. **Receipt scan fixes**: removed `onTouchEnd` double-handler on confirm button (was silent-failing on mobile); errors now show as toast not `alert()`. Duplicate detection: warns if same store+total scanned in last 30 days (`receiptIsDuplicate`). Date auto-detect kept (defaults to detected receipt date).
+4. **Stats charts** (pure SVG, no lib): `DonutChart` (category split, total in center) + legend, and `TrendChart` (daily spending bars). Category/Trend toggle shown when period ≥2 days. Components live above `StatsTab` in Dashboard.js.
+5. **VISUAL REDESIGN "Teal + Coral" v5** — high-fidelity, from a Claude design handoff (zip). Applied via CSS variables in `src/index.css :root`:
+   - `--color-primary: #BE4B13` (coral), `--color-bg-header: #143C37` (deep teal), `--color-bg-page: #F9F5EC` (cream), `--color-accent-red: #C21725`, `--color-accent-green-text: #00943E`, `--color-border: #E2DFD8` (hairline), new `--color-border-input #DAD7D0`, `--color-chip-bg #F1EEE7`, `--color-chip-text #58554E`.
+   - Radii sharper: `--radius-pill: 9px`. Hairline borders replace shadows on cards/rows.
+   - Font: **Sora** (Google Fonts link in `public/index.html`), tabular-nums on body.
+   - Date-range pills + day pills active = dark teal; me/all toggle active = coral tint.
+   - Splash screen (`App.js` Spinner) bg = teal. PWA `manifest.json` + `theme-color` = teal.
+   - Header dropdown menu: tinted rounded icon chips (`.dd-ico`), red sign-out.
+   - Stats "Range" pill: lucide `Calendar` icon (not emoji). Date-range picker: white card, inputs `min-width:0` + `appearance:none` to stop iOS overflow.
+   - Design handoff doc saved at: `/private/tmp/.../scratchpad/design_guide/design_handoff_pocket_budget_redesign/README.md` (temporary — re-extract from zip in Downloads if needed). Category system kept at 9 colors (mock only showed 3).
+
+### Known open issues
+- **PWA cache**: users report not seeing updates without reinstall. Service worker (`public/service-worker.js`) updated to clear old caches on activate, and in-app "Refresh app" button calls `reg.update()` + `reload(true)`. Still flaky — incognito always works. Not fully solved.
+- **Old API key in git history** (commit `ce3abe2`): `.env` was committed May 24, key later revoked. New key in local `.env` + GitHub secret. History not cleaned.
+- Pre-existing eslint warnings (unused vars, duplicate `moveToShared` key). CI uses `CI: false` so they don't block.
+
+### Git / deploy state
+- Repo: https://github.com/Liav-Chanoch/pocket-budget (main). Local main = source of truth.
+- Latest commit this session: `7e6c989` (date-range iOS overflow fix).
+- `package.json` has `optionalDependencies: { yaml: ^2.9.0 }` to keep `npm ci` lockfile in sync for GitHub Actions.
 
 ---
 
