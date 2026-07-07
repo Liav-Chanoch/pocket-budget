@@ -357,14 +357,16 @@ body {
 .stats-date-field { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .stats-date-label { font-size: 0.64rem; font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.3rem; }
 .stats-date-input {
+  -webkit-appearance: none; appearance: none;
   border: 1.5px solid var(--color-border-input); border-radius: 8px;
-  padding: 0.5rem 0.55rem; font-size: 0.85rem; height: 38px;
+  padding: 0 0.55rem; font-size: 0.82rem; height: 38px; line-height: 38px;
   color: var(--color-text-main); background: white; outline: none;
-  width: 100%; box-sizing: border-box;
+  width: 100%; min-width: 0; box-sizing: border-box;
   font-family: inherit;
 }
+.stats-date-input::-webkit-date-and-time-value { text-align: left; margin: 0; }
 .stats-date-input:focus { border-color: var(--color-primary); }
-.stats-date-dash { font-size: 0.9rem; color: var(--color-text-muted); flex-shrink: 0; padding-bottom: 0.6rem; }
+.stats-date-dash { font-size: 0.9rem; color: var(--color-text-muted); flex-shrink: 0; align-self: flex-end; height: 38px; line-height: 38px; }
 
 .expense-item {
   animation: fadeSlideUp 0.18s ease both;
