@@ -77,18 +77,20 @@ Return ONLY a valid JSON object, no markdown, no explanation:
   };
 
   let response;
-  try {
-    response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new Error('NETWORK_ERROR');
-  }
-
-  if (!response.ok) {
-    throw new Error(`API_ERROR:${response.status}`);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      response = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new Error('NETWORK_ERROR');
+    }
+    if (response.ok) break;
+    const retryable = response.status === 503 || response.status === 429;
+    if (!retryable || attempt === 1) throw new Error(`API_ERROR:${response.status}`);
+    await new Promise(r => setTimeout(r, 1200));
   }
 
   const data = await response.json();
