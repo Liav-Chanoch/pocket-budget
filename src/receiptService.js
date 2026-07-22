@@ -89,7 +89,16 @@ Return ONLY a valid JSON object, no markdown, no explanation:
     }
     if (response.ok) break;
     const retryable = response.status === 503 || response.status === 429;
-    if (!retryable || attempt === 1) throw new Error(`API_ERROR:${response.status}`);
+    if (!retryable || attempt === 1) {
+      // Surface the API's own explanation — a bare status code hides causes
+      // like an invalid key, which otherwise look identical to any other 400.
+      let detail = '';
+      try {
+        const err = await response.clone().json();
+        detail = err?.error?.message || '';
+      } catch { /* body wasn't JSON — fall back to the status alone */ }
+      throw new Error(detail ? `API_ERROR:${response.status}: ${detail}` : `API_ERROR:${response.status}`);
+    }
     await new Promise(r => setTimeout(r, 1200));
   }
 
