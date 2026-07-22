@@ -1,6 +1,9 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import {
+  initializeFirestore, connectFirestoreEmulator,
+  persistentLocalCache, persistentMultipleTabManager,
+} from "firebase/firestore";
 
 const devConfig = {
   apiKey: "AIzaSyB-jIQ0Gdz3eAeF-nF83YlNIXbBzxkOVlU",
@@ -25,7 +28,13 @@ const firebaseConfig = isDevBuild ? devConfig : prodConfig;
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Offline-first: cache reads in IndexedDB and queue writes while offline.
+// Writes replay automatically once the connection is restored.
+// persistentMultipleTabManager keeps the cache consistent across open tabs.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
 
 // Local emulator override (npm start without REACT_APP_ENV=dev)
 if (process.env.NODE_ENV === 'development' && !isDevBuild) {

@@ -60,7 +60,7 @@ function Spinner() {
     <div style={{
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: '#214e99',
+      height: '100vh', background: '#143C37',
     }}>
       <img
         src="/logo-header-v4.png"
@@ -90,8 +90,14 @@ function AppInner() {
       setGroup(null);
       setMemberData(null);
       if (!u) { setGroupId(null); return; }
-      const d = await getDoc(doc(db, 'users', u.uid));
-      setGroupId(d.exists() && d.data().groupId ? d.data().groupId : null);
+      try {
+        // Offline this resolves from the IndexedDB cache. If even that misses
+        // (never loaded online), fall through rather than hanging on the spinner.
+        const d = await getDoc(doc(db, 'users', u.uid));
+        setGroupId(d.exists() && d.data().groupId ? d.data().groupId : null);
+      } catch {
+        setGroupId(null);
+      }
     });
   }, []);
 
