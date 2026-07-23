@@ -334,6 +334,7 @@ body {
 /* ── Expense List ── */
 .expense-list {
   flex: 1; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 0.75rem 0.9rem 5rem;
 }
 .day-group { margin-bottom: 1rem; }
@@ -993,6 +994,8 @@ body {
 }
 .shopping-items-scroll {
   flex: 1; min-height: 0; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 5rem;
 }
 
 /* ── Estimation panel docked at bottom ── */
@@ -1002,7 +1005,7 @@ body {
   background: var(--color-primary-light);
   max-height: 55%;
   display: flex; flex-direction: column;
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
 }
 .estimation-panel-header {
   display: flex; align-items: center; gap: 0.5rem;
@@ -1026,6 +1029,7 @@ body {
 }
 .estimation-results {
   flex: 1; overflow-y: auto; min-height: 0; background: var(--color-primary-light);
+  -webkit-overflow-scrolling: touch;
   animation: fadeSlideUp 0.2s ease;
 }
 .estimation-total {
