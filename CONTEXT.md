@@ -1,6 +1,52 @@
-# Pocket Budget — Session Context Dump
+# Pocket Budget — Session Context
 
-> Last updated: 2026-06-23. Use this to onboard a new Claude Code session with zero ramp-up.
+> Last updated: **2026-07-22**. Onboarding doc for a new Claude Code session.
+> Read §0 first — it exists because ignoring it caused a production incident.
+
+---
+
+## 0. READ THIS BEFORE YOU DEPLOY
+
+**The local working tree is not automatically the source of truth. Verify before every deploy.**
+
+On 2026-07-22 a deploy overwrote production with an older design and a dead API key.
+Cause: the local checkout was behind what was live. Prod was serving a build made from
+source that no longer existed on this machine. Deploying "the current code" silently
+reverted three days of design work and broke receipt scanning.
+
+**Mandatory pre-deploy check** (30 seconds, run every time):
+
+```bash
+# 1. What theme is live right now?
+curl -s https://pocket-budget-manager.web.app/ | grep -oE '/static/css/main\.[a-f0-9]+\.css'
+# then fetch that CSS and check --color-bg-header. Expect #143c37 (deep teal).
+
+# 2. Does the local build produce the same thing?
+grep -m1 -- '--color-bg-header' src/index.css   # expect #143C37
+```
+
+If live and local disagree, **stop and investigate**. Do not deploy to "fix" it.
+
+**Recovery method if local is behind:** CRA ships source maps to hosting
+(`main.<hash>.js.map`, `main.<hash>.css.map`). They contain complete original sources
+in `sourcesContent`. Any deployed build can be fully recovered:
+
+```python
+import json
+m = json.load(open('main.<hash>.js.map'))
+for i, s in enumerate(m['sources']):
+    if '/src/' in s and 'node_modules' not in s:
+        open('/tmp/' + s.split('/')[-1], 'w').write(m['sourcesContent'][i])
+```
+
+This is what recovered the design. Keep `GENERATE_SOURCEMAP` at its default (on) —
+it is the de-facto backup for a repo with no remote.
+
+**Other rules learned the hard way:**
+
+- Never `git stash` the user's work to "clean up" before a deploy. Ask instead.
+- Screenshots showing the correct UI may be a stale phone cache — not proof the deploy worked.
+- Verify a deploy by fetching the live bundle and grepping it, not by trusting the CLI's success message.
 
 ---
 
@@ -8,30 +54,30 @@
 
 ```
 berlin-budget/
-├── .env                          # REACT_APP_GEMINI_API_KEY=...
+├── .env                          # REACT_APP_GEMINI_API_KEY — NOTE: tracked in git, see §13
 ├── .firebaserc                   # default project = pocket-budget-manager (PROD)
-├── firebase.json                 # Firestore rules + emulator config + hosting
-├── firestore.rules               # All Firestore security rules
-├── package.json
+├── firebase.json                 # Firestore rules + emulator + hosting (no-cache on index.html)
+├── firestore.rules
 ├── public/
-│   ├── index.html
 │   ├── manifest.json             # PWA manifest
-│   ├── service-worker.js
-│   └── logo-header-v4.png        # Current logo
+│   ├── service-worker.js         # share-target + offline app-shell cache (§11)
+│   └── logo-header-v4.png
 └── src/
-    ├── App.js                    # Auth gate → GroupSetup or Dashboard
-    ├── AuthScreen.js             # Email/password sign-in & sign-up
-    ├── Dashboard.js              # ~4620 lines — ALL UI components live here
-    ├── GroupSetup.js             # Create group / join with invite code
-    ├── LanguageContext.js        # React context for EN/HE language switching
-    ├── firebase.js               # Firebase init — switches dev/prod on REACT_APP_ENV
-    ├── firebase.dev.js           # (unused duplicate, ignore)
-    ├── i18n.js                   # ~607 lines — all strings EN + HE
-    ├── index.css                 # ~1040 lines — all styles, CSS vars for theming
-    ├── index.js                  # React root
-    ├── pricedb.js                # Price estimation + currency conversion helpers
-    ├── receiptService.js         # Gemini AI: receipt scan, price estimate, categorize
-    └── utils.js                  # getDailyBudget, date helpers, CATEGORIES, etc.
+    ├── App.js                    # Auth gate → GroupSetup or Dashboard; useAutoUpdate()
+    ├── AuthScreen.js
+    ├── Dashboard.js              # ~4890 lines — ALL UI components live here
+    ├── GroupSetup.js
+    ├── LanguageContext.js        # EN/HE context
+    ├── firebase.js               # init + Firestore offline persistence (§11)
+    ├── firebase.dev.js           # unused duplicate, ignore
+    ├── firestoreWrite.js         # queuedWrite() + newDocRef() — offline writes (§11)
+    ├── i18n.js                   # ~640 lines — all strings EN + HE
+    ├── index.css                 # ~1090 lines — v5 "Teal + Coral" theme (§4)
+    ├── offlineToast.js           # pub/sub for "needs internet" notices
+    ├── pricedb.js                # price estimation + FX conversion
+    ├── receiptService.js         # Gemini: scan, price estimate, categorize
+    ├── useOnline.js              # navigator.onLine hook
+    └── utils.js                  # getDailyBudget, date helpers, CATEGORIES
 ```
 
 ---
@@ -39,293 +85,349 @@ berlin-budget/
 ## 2. Tech Stack
 
 - **React 19.2.6** via Create React App (PWA)
-- **Firebase SDK v12**: Firestore (real-time `onSnapshot`), Auth (email/password), Hosting
-- **No Firebase Functions** — all logic is client-side
-- **Lucide-react v1.16** — icons only (no emoji icons in UI)
-- **Gemini 2.5 Flash** — receipt scanning + price estimation (REST API, not SDK)
-- **Two Firebase projects**:
-  - `pocket-budget-manager` — **PROD** (live at `pocket-budget-manager.web.app`)
-  - `pocket-budget-manager-dev` — **DEV** (live at `pocket-budget-manager-dev.web.app`)
+- **Firebase SDK v12** — Firestore (`onSnapshot`), Auth (email/password), Hosting
+- **No Cloud Functions** — all logic client-side, including Gemini calls
+- **lucide-react** — icons only, never emoji in UI
+- **Gemini 2.5 Flash** via REST (not SDK)
+- Two Firebase projects:
+  - `pocket-budget-manager` — **PROD** → pocket-budget-manager.web.app
+  - `pocket-budget-manager-dev` — **DEV** → pocket-budget-manager-dev.web.app
 
 ---
 
-## 3. Build / Deploy Commands
+## 3. Build / Deploy
 
 ```bash
-npm start                  # local dev → hits LOCAL EMULATORS (auth:9099, firestore:8080)
-npm run deploy:dev         # builds with REACT_APP_ENV=dev → deploys to DEV Firebase project
-npm run deploy             # builds prod → deploys to PROD Firebase project
+npm start                  # local dev → LOCAL EMULATORS (auth:9099, firestore:8080)
+npm run deploy:dev         # REACT_APP_ENV=dev → DEV project
+npm run deploy             # → PROD project
 
-# Rules-only deploys (always do this before hosting when rules changed):
+# Rules-only (deploy BEFORE hosting whenever rules changed):
 firebase deploy --only firestore:rules --project pocket-budget-manager-dev
 firebase deploy --only firestore:rules --project pocket-budget-manager
 ```
 
-**CRITICAL**: All current Home Mode development goes **DEV only**. Never run `npm run deploy` (prod) for Home Mode work.
+**Deploy target:** default to PROD unless told otherwise. (An earlier version of this doc
+said Home Mode must stay DEV-only. As of 2026-07-22 Home Mode code is on prod but inert —
+it is gated behind `groupMode === 'home'`, and trip groups never see it. Both environments
+now run the same build.)
+
+Use `npx serve -s build -l 3001` to test a production build locally — needed for
+service-worker behaviour, which does not run under `npm start`.
 
 ---
 
-## 4. Environment Variables
+## 4. Design — v5 "Teal + Coral"
 
-`.env` file in project root:
+Restored 2026-07-22 from source maps after being overwritten. **These values identify the
+correct build. If they don't match what's live, something is wrong.**
+
 ```
-REACT_APP_GEMINI_API_KEY=...   # Gemini API key
+--color-primary:       #BE4B13   /* burnt-orange / coral — primary interactive */
+--color-primary-light: rgba(190,75,19,0.12)
+--color-bg-page:       #F9F5EC   /* warm cream */
+--color-bg-card:       #FFFFFF
+--color-bg-header:     #143C37   /* deep teal — the signature colour */
+--color-text-main:     #14110C
+--color-accent-red:    #C21725
+--radius-pill:         9px       /* deliberately sharper than fully-pill */
 ```
 
-`REACT_APP_ENV=dev` is injected at build time by the `build:dev` script — not in `.env`.
+Font is **Sora**. Splash-screen background in `App.js` is `#143C37` — keep in sync with
+`--color-bg-header`. Header has an 18px bottom radius. `font-variant-numeric: tabular-nums`
+on body.
+
+A **blue** theme (`#2D54B8`) is the *old* design and lives in every git commit up to
+`ce3abe2`. Seeing blue means an old build. All CSS vars carry inline comments naming their
+design-token role — preserve them.
 
 ---
 
-## 5. Firebase Config
-
-`src/firebase.js` switches on `process.env.REACT_APP_ENV === 'dev'`:
-- **Dev**: `projectId: "pocket-budget-manager-dev"`
-- **Prod**: `projectId: "pocket-budget-manager"`
-
-`npm start` (without `REACT_APP_ENV=dev`) → hits local emulators on `localhost:9099` (auth) + `localhost:8080` (Firestore).
-
----
-
-## 6. Firestore Data Model
+## 5. Firestore Data Model
 
 ```
-/users/{uid}
-  └── groupId: string
+/users/{uid} └── groupId
 
 /groups/{groupId}                         ← groupId === admin's uid
-  ├── adminUid: string
-  ├── budgetMode: 'daily' | 'weekly'
-  ├── budgetAmount: number
-  ├── currency: string (symbol: '₪','€','$','£')
-  ├── inviteCode: string
-  ├── groupMode: 'trip' | 'home'          ← NEW; normalize .toLowerCase(); missing = 'trip'
-  ├── savings_box_shared: number
-  ├── shared_savings_contributors: { [uid]: number }
-  ├── sharedNotes: string
-  ├── sharedNotesUpdatedAt: timestamp
-  ├── sharedNotesUpdatedBy: string
-  └── createdAt: timestamp
+  ├── adminUid, budgetMode ('daily'|'weekly'), budgetAmount
+  ├── currency (symbol: '₪','€','$','£'), inviteCode
+  ├── groupMode: 'trip' | 'home'          ← normalize .toLowerCase(); missing = 'trip'
+  ├── savings_box_shared, shared_savings_contributors: { [uid]: number }
+  ├── sharedNotes / sharedNotesUpdatedAt / sharedNotesUpdatedBy
+  ├── translateReceipts: bool
+  └── createdAt
 
   /members/{uid}
     ├── uid, displayName, email, role ('admin'|'user')
-    ├── running_balance: number           ← cumulative net (surplus - deficit across days)
+    ├── running_balance: number           ← cumulative net across days
     ├── last_day_processed: 'YYYY-MM-DD'
-    ├── savings_box_personal: number
-    ├── last_sunday_prompt: string|null
-    ├── borrow_enabled: bool              ← allows borrowing from tomorrow's budget
-    ├── avatarUrl: string (base64 jpeg)
-    └── notes: string
+    ├── savings_box_personal, last_sunday_prompt
+    ├── borrow_enabled: bool, borrow_percent: number   ← percent, default 100 (NOT 0.5)
+    ├── avatarUrl (base64 jpeg), notes
+    └── sharedNotesLastSeenAt
 
-  /expenses/{expenseId}
-    ├── uid, description, amount, cat (category id), date ('YYYY-MM-DD')
-    ├── originalAmount, originalCurrency  ← set when expense is in foreign currency
-    ├── photoUrl: string (base64)
-    └── createdAt
+  /expenses/{id}
+    ├── uid, addedBy, description, amount, category, date ('YYYY-MM-DD')
+    ├── originalAmount, originalCurrency  ← when entered in foreign currency
+    ├── quantity (only when > 1), photo (base64), createdAt
 
-  /daily_records/{YYYY-MM-DD}
-    └── { [uid]: { total_spent, debt, surplus, daily_budget } }
+  /daily_records/{uid}_{YYYY-MM-DD}       ← note the composite doc id
+    └── { uid, date, total_spent, debt, surplus, daily_budget }
 
-  /big_expenses/{expId}
-    ├── uid (owner), description, totalAmount, paidAmount
-    ├── active: bool
-    ├── createdBy: string                 ← filter client-side by createdBy===user.uid
-    ├── installments: number, daysRemaining: number
-    └── createdAt
-
-  /product_catalog/{uid}/items/{itemId}
-    ├── name, price, unit, barcode (optional)
-    └── updatedAt
-
-  /receipts/{receiptId}
-    ├── storeName, total, items: [], receiptDate
-    └── createdBy, createdAt
-
-  /shopping_list/{itemId}
-    ├── text, checked: bool, addedBy, qty, unit, estimatedPrice
-    └── createdAt
-
-  /named_lists/{listId}
-    ├── name, emoji, createdBy, createdAt
-    └── /items/{itemId}: { text, checked, addedBy, qty, unit, estimatedPrice, createdAt }
-
-  /income/{incomeId}                      ← HOME MODE ONLY
-    ├── uid, description, amount
-    ├── frequency: 'monthly'|'weekly'|'once'
-    ├── isShared: bool
-    ├── startDate: 'YYYY-MM-DD'
-    └── createdAt
-
-  /recurring_expenses/{recId}             ← HOME MODE ONLY
-    ├── uid, description, amount
-    ├── frequency: 'monthly'|'weekly'
-    ├── type: 'fixed'|'variable'
-    ├── autoDeduct: bool                  ← true when type==='fixed'
-    ├── dayOfMonth: number|null           ← 1–28, only for monthly
-    ├── isShared: bool
-    ├── splitType: 'equal'|'custom'       ← only when isShared
-    ├── customSplit: { [uid]: number }    ← only when splitType==='custom'
-    └── createdAt
+  /big_expenses/{id}
+    ├── totalAmount, dailyAmount, weeks, paidOff, startDate
+    ├── active: bool, createdBy           ← filtered CLIENT-SIDE by createdBy===uid
+  /product_catalog/{uid}/items/{id}       ← name, price, originalPrice, originalCurrency, category, photo
+  /receipts/{id}                          ← storeName, total, items[], currency, imageBase64
+  /shopping_list/{id}                     ← text, uid, addedBy, addedAt, quantity, claimedBy
+  /named_lists/{id}/items/{id}            ← personal lists
+  /other_lists/{id}                       ← named custom lists
+  /price_estimates/{cacheKey}             ← Gemini price cache: {country}_{slug}
+  /income/{id}                            ← HOME MODE
+  /recurring_expenses/{id}                ← HOME MODE
 ```
 
----
-
-## 7. Firestore Security Rules Summary
-
-All subcollections live inside `match /groups/{groupId}`. Helper functions at the bottom:
-- `isMember(groupId)` — checks `/groups/{groupId}/members/{uid}` exists
-- `isAdmin(groupId)` — checks `group.adminUid === request.auth.uid`
-
-Key rules:
-- `income`: members read/create; owner-only delete
-- `recurring_expenses`: members read/create; owner or admin delete
-- `big_expenses`: members read/write (no per-user restriction at rules level — filtered client-side)
-- `expenses`: members read/create/update; owner or admin delete
-
-**WARNING**: Adding subcollection rules inside `match /groups/{groupId}` once broke all reads for all users. Always deploy rules first, verify compile succeeds, then deploy hosting.
+`shopping_list.addedAt` uses `new Date()`, **not** `serverTimestamp()` — deliberate, so
+`orderBy('addedAt')` works offline. Do not "fix" this to serverTimestamp.
 
 ---
 
-## 8. Dashboard.js Component Map
+## 6. Firestore Rules
 
-| Lines | Component / Section |
-|-------|---------------------|
-| 91 | `ExpenseItem` — single expense row |
-| 155 | `ExpensesTab` — expense list with filters |
-| 269 | `StatsTab` — charts, per-category breakdown |
-| 400 | `MembersTab` — balances, savings box |
-| 521 | `ProfilePage` — full-page overlay (profile, savings, big expenses) |
-| 745 | `ScannedReceiptsPage` — receipt history |
-| 915 | `SettingsTab` — budget, currency, invite code, admin controls |
-| 1196 | `ProductsTab` — personal price catalog |
-| 1416 | `ShoppingListTab` — shared shopping list with price estimates & nearby shops |
-| 2081 | `OtherListDetail` / `OtherListsPage` — named custom lists |
-| 2482 | `MyListsPage` — personal lists |
-| 2639 | `NotesPage` — shared group notes |
-| 2724 | `IncomePage` — **HOME MODE** income tracking |
-| 2875 | `getNextPaymentDate` / `formatNextPayment` helpers |
-| 2905 | `RecurringExpensesPage` — **HOME MODE** recurring expenses |
-| 3175 | `ReceiptReviewModal` — post-scan review & add expenses |
-| 3380 | `ReassignModal` — move expense to another member |
-| 3407 | `AvailableInfoPopup` — "how is this calculated" popup |
-| 3438 | `BigExpenseSheet` — big expense management overlay |
-| 3596 | `SundayPromptModal` — weekly savings prompt |
-| 3635 | `usePullToRefresh` hook |
-| 3655 | **Main `Dashboard` component** — all state, effects, render tree |
+Helpers: `isMember(groupId)`, `isAdmin(groupId)`. Rules for `income` and
+`recurring_expenses` are deployed in both environments.
+
+**WARNING:** adding subcollection rules inside `match /groups/{groupId}` once broke all
+reads for all users. Always deploy rules first, confirm success, then deploy hosting.
 
 ---
 
-## 9. What's Been Built
+## 7. Dashboard.js Component Map
 
-### Core Trip Mode (deployed to PROD + DEV)
+Line numbers as of 2026-07-22 — they drift, grep the name instead.
 
-- Email/password auth; group create/join via invite code
-- Daily/weekly budget with rollover (`running_balance` per member)
-- Expense tracking with categories, photos (base64), date editing, reassign to partner
-- Stats tab: charts, per-category breakdown, date range filters
-- Members tab: per-member running balance, savings box (personal + shared)
-- Settings: budget mode/amount, currency (with FX conversion), invite code, reset rollover
-- Big expenses: spread large purchases over N days, deduct daily from balance
-- Shopping list: shared, with Gemini price estimates, nearby shops (Google Maps link)
-- Named custom lists (Other Lists) + personal My Lists
-- Shared group notes
-- Receipt scanning via Gemini (camera or upload → items → review → add expenses)
-- Product price catalog (personal, per-user)
-- Sunday savings prompt (weekly)
-- Pull-to-refresh
-- Hebrew RTL + English language toggle
-- PWA (installable, service worker, `Cache-Control: no-cache` on index.html)
-- CSS variable theming throughout
+| Line | Component |
+|------|-----------|
+| 94 | `ExpenseItem` |
+| 158 | `ExpensesTab` |
+| 273 / 309 | `DonutChart` / `TrendChart` |
+| 343 | `StatsTab` |
+| 522 | `MembersTab` |
+| 643 | `ProfilePage` |
+| 867 | `ScannedReceiptsPage` |
+| 1037 | `SettingsTab` |
+| 1327 | `ProductsTab` |
+| 1547 | `ShoppingListTab` — Quick List |
+| 2222 | `OtherListDetail` (duplicates much of ShoppingListTab — edit both) |
+| 2534 / 2627 | `OtherListsPage` / `MyListsPage` |
+| 2784 | `NotesPage` |
+| 2869 | `IncomePage` — HOME MODE |
+| 3050 | `RecurringExpensesPage` — HOME MODE |
+| 3320 | `ReceiptReviewModal` |
+| 3555 | `AvailableInfoPopup` |
+| 3642 | `BigExpenseSheet` |
+| 3865 | **Main `Dashboard`** — all state, effects, render tree |
 
-### Home Mode (DEV only — requires `groupMode: 'home'` on group doc)
-
-- `groupMode` field on group doc — new groups default to `'trip'`; admin migration button in Settings (shown only when field is `null`)
-- `groupMode` normalized via `.toLowerCase()` in main Dashboard (handles `"Home"` vs `"home"`)
-- **Income page** (`/income` subcollection): real-time list grouped Shared / Personal; add form with description, amount, frequency (monthly/weekly/once), isShared toggle; delete own entries only
-- **Recurring Expenses page** (`/recurring_expenses` subcollection):
-  - Flat list; each row shows description, frequency badge, Fixed/Variable badge, optional share badge, and **"Next: \<date\>"** line
-  - Add form: description, amount, Monthly/Weekly toggle, Fixed/Variable toggle (Fixed = auto-deduct daily; Variable = reminder only), day-of-month input (monthly only), Shared expense toggle → Split equally or Choose amount per member
-  - `autoDeduct` stored on write (`type === 'fixed'`); `customSplit: { [uid]: amount }` stored for custom splits
-  - Next payment date calculated from `dayOfMonth` (monthly) or `createdAt` day-of-week (weekly)
-- Both pages accessible from gear (⚙️) menu only when `groupMode === 'home'`
-- Firestore rules deployed for both `income` and `recurring_expenses`
+`ShoppingListTab` and `OtherListDetail` contain near-identical logic (add item, buy,
+delete, estimate). **A change to one almost always belongs in the other.**
 
 ---
 
-## 10. Balance Calculation
+## 8. Balance Calculation
 
 ```js
-const dailyBudget    = getDailyBudget(group);  // budgetAmount or budgetAmount/7
+const dailyBudget    = getDailyBudget(group);         // amount, or amount/7 if weekly
 const runningBalance = memberData.running_balance || 0;
+const todayBalance   = runningBalance + dailyBudget - myTodayTotal - bigExpenseDailyTotal;
 
-// Each day at rollover: net = dailyBudget - daySpent; added to running_balance
-const todayBalance   = runningBalance - myTodayTotal + dailyBudget;
-
-const borrowFraction = (memberData.borrow_enabled ?? false) ? 0.5 : 0;
+const borrowFraction = (memberData.borrow_enabled ?? false)
+  ? (memberData.borrow_percent ?? 100) / 100          // percent-based, default 100%
+  : 0;
 const canStillSpend  = Math.max(0, todayBalance + dailyBudget * borrowFraction);
 ```
 
-Big expenses deduct `totalAmount / installments` per day from the `canStillSpend` display. Big expenses are filtered client-side by `createdBy === user.uid` (not a Firestore query) to avoid needing a composite index.
+Rollover runs client-side in a `useEffect` in `Dashboard`, walking each unprocessed day
+from `last_day_processed` to yesterday and writing `/daily_records`.
+
+**Known limitation:** rollover is per-member and each client writes only its own member
+doc. A shared/mutual budget (one pot for the whole group) would need a transaction plus
+`last_day_processed` on the *group* doc to avoid double-counting from two phones. This was
+discussed but not built — see §15.
 
 ---
 
-## 11. Gemini AI Config (receiptService.js)
+## 9. Gemini (receiptService.js)
 
-**Always use**: `model: gemini-2.5-flash`, `thinkingBudget: 0`, `temperature: 0.1` — **never change these**.
+**Always** `gemini-2.5-flash`, `thinkingBudget: 0`, `temperature: 0.1` — never change.
 
-Three exported functions:
-- `scanReceipt(base64, mimeType)` — extract items from receipt image
-- `fetchGeminiPriceEstimate(itemName, country)` — price estimate for shopping list item
-- `categorizeItemsByStore(storeName, items)` — assign expense categories post-scan
+Exports: `scanReceipt`, `fetchGeminiPriceEstimate`, `categorizeItemsByStore`.
+`scanReceipt` retries once on 503/429; errors include the API's own message
+(`API_ERROR:400: API key not valid…`) rather than a bare status code.
+
+**The API key:**
+- Lives in `.env` as `REACT_APP_GEMINI_API_KEY`, **baked into the JS bundle at build time**.
+  Editing `.env` does nothing until you rebuild *and* redeploy.
+- Current key is the newer service-account-bound format (`AQ.` prefix, 53 chars), not
+  classic `AIza`. **Service-account-bound keys cannot take HTTP-referrer restrictions** —
+  the option is greyed out in Cloud Console. There is no way to lock it to a domain.
+- It is therefore publicly readable by anyone who opens the app. This is inherent to
+  calling Gemini from the browser.
+- **Actual exposure is negligible**: spend is ~₪0.43/month, two users, unlisted app.
+  A budget alert is the proportionate mitigation. A Cloud Function proxy would remove the
+  exposure entirely but was judged not worth an hour of work plus cold-start latency.
+  Revisit only if the app opens to more users or spend jumps.
+
+Symptom guide: `API_ERROR:400` with "API key not valid" means the key baked into the live
+bundle is wrong — check `.env` matches the key in AI Studio, then rebuild.
 
 ---
 
-## 12. Known Pre-existing ESLint Warnings (non-blocking)
+## 10. i18n
 
-These existed before this session and do not prevent builds:
+Every user-visible string goes in **both** the `en` and `he` blocks of `i18n.js`.
+Hebrew is a full RTL layout (`[dir="rtl"]` overrides at the end of `index.css`).
+Two pre-existing duplicate `moveToShared` keys (lines ~164, ~484) are harmless.
+
+---
+
+## 11. Offline Support (added 2026-07-22)
+
+The app previously showed a blank page with no connection. Now works offline.
+
+**Three layers:**
+
+1. **`firebase.js`** — `initializeFirestore` with `persistentLocalCache` +
+   `persistentMultipleTabManager`. Reads come from IndexedDB; writes queue and replay on
+   reconnect, silently.
+
+2. **`public/service-worker.js`** — caches the app shell in `pb-shell-v1`.
+   - Navigations → **network-first**, cached shell as fallback.
+     Must stay network-first, or `useAutoUpdate` never sees new deploys.
+   - `/static/**` (hashed, immutable) → cache-first.
+   - Cross-origin (Firestore, Gemini, Maps, FX rates) → untouched.
+   - `pruneStaleAssets()` drops bundles the fresh index.html no longer references.
+
+3. **`firestoreWrite.js`** — `queuedWrite(promise)`.
+
+**Why `queuedWrite` exists** (verified empirically, do not "simplify" it away):
+Firestore settles a write promise only on *server* acknowledgement. Offline, the local
+cache applies the write and `onSnapshot` fires immediately with
+`hasPendingWrites: true` — but `await addDoc(...)` **never resolves**. Any UI state behind
+that await (closing a modal, clearing a spinner) hangs forever. Measured: an unwrapped
+buy-flow hung indefinitely; wrapped, it completes in ~1 ms.
+
+`queuedWrite` returns as soon as the write is queued, with a 2 s timeout covering
+"lying online" cases (captive portals, dead wifi where `navigator.onLine` is true).
+`newDocRef()` exists because `addDoc` cannot return an ID offline — `doc()` generates one
+client-side.
+
+**Rule: any `await` on a Firestore write that gates UI state must be wrapped in `queuedWrite`.**
+
+**Works offline:** open app, view/edit Quick List, add expenses, balance and stats, all
+budget maths. **Needs network:** first-ever load, sign-in, receipt scan, AI price
+estimates, nearby shops — each shows a "needs internet" toast via `notifyOffline()`.
+
+**Testing offline:** build, `npx serve -s build -l 3001`, load once, stop the server,
+reload. The page must still boot. On iOS, an installed PWA caches hard — force-close is
+often not enough; remove from home screen and re-add.
+
+---
+
+## 12. Known ESLint Warnings (non-blocking, pre-existing)
 
 | File | Line | Warning |
 |------|------|---------|
-| `src/App.js` | 107 | Missing `user` dependency in `useEffect` |
-| `src/Dashboard.js` | 2233 | `today` assigned but never used |
-| `src/Dashboard.js` | 3846 | `inOverdraft` assigned but never used |
-| `src/i18n.js` | 158, 461 | Duplicate key `moveToShared` in HE section |
+| `App.js` | 113 | missing `user` dep in `useEffect` |
+| `Dashboard.js` | 2378 | `today` unused |
+| `Dashboard.js` | 4063 | `maxTodaySpend` unused |
+| `Dashboard.js` | 4064 | `inOverdraft` unused |
+| `i18n.js` | 164, 484 | duplicate key `moveToShared` |
+
+`inOverdraft` is computed but never rendered — there is **no** "over today's budget"
+banner in the code despite one appearing in old screenshots. That banner is from a stale
+cached build.
 
 ---
 
 ## 13. Git State
 
-- **Branch**: `feature/quantities-discounts`
-- All changes are **uncommitted** — working tree is current state. No stash.
-- Last commit: `ce3abe2 chore: snapshot before receipt scanning feature`
-- Git is used as a save-point system here, not for PRs/branches per feature.
+- **Branch:** `feature/quantities-discounts`
+- **HEAD:** `b389e65 fix: surface Gemini API error message instead of bare status code`
+- Prior: `3aaab91 feat: restore v5 teal+coral design, add offline support`
+- Git is a save-point system here, not a PR workflow.
+- **No remote.** The repo exists only on this machine.
+
+**Two things worth fixing:**
+
+1. **`.env` is tracked in git.** `.gitignore` covers `.env.local` and friends but not plain
+   `.env`, so the Gemini key is in commit history (`b389e65`, `ce3abe2`). Harmless while
+   the repo is local-only; it would travel with the repo if pushed to GitHub. Fix:
+   ```bash
+   git rm --cached .env && echo ".env" >> .gitignore
+   ```
+   (History would still hold it — rotate the key if the repo is ever pushed.)
+
+2. **No off-machine backup.** Today's recovery worked only because the dev site happened
+   to ship source maps. That was luck. A private remote would make it deliberate.
 
 ---
 
-## 14. Architectural Rules & Things to Avoid
+## 14. Architectural Rules
 
-1. **Deploy rules before hosting** whenever `firestore.rules` changes — a prior incident where subcollection rules were added caused all group reads to fail for all users.
-2. **Never deploy Home Mode work to PROD** — use `npm run deploy:dev` only.
-3. **No Firestore compound queries** — avoid composite index requirements by filtering client-side (e.g. `snap.docs.filter(e => e.createdBy === user.uid)`).
-4. **CSS vars everywhere** — hardcoded hex colors only where CSS vars resolve as transparent (known issue: nearby shops modal uses `#fff`/`#F8F9FA`).
-5. **All UI components live in `Dashboard.js`** — no separate component files.
-6. **No Firebase Functions** — all logic is client-side React.
-7. **`groupMode` must be normalized**: `(group.groupMode || 'trip').toLowerCase()`.
-8. **Lucide-react icons only** — no emoji icons in UI elements.
-9. **i18n for every user-visible string** — add to both `en` and `he` blocks in `i18n.js`.
+1. **Verify live vs local before deploying** — §0.
+2. **Deploy rules before hosting** when `firestore.rules` changes.
+3. **No Firestore compound queries** — filter client-side to avoid composite indexes.
+4. **CSS vars everywhere**; keep the design-token comments.
+5. **All UI lives in `Dashboard.js`** — no separate component files.
+6. **No Cloud Functions** — client-side only.
+7. **Normalize `groupMode`**: `(group.groupMode || 'trip').toLowerCase()`.
+8. **lucide-react icons only** — no emoji in UI.
+9. **i18n both locales** for every visible string.
+10. **Wrap UI-gating Firestore writes in `queuedWrite`** — §11.
+11. **Mirror changes between `ShoppingListTab` and `OtherListDetail`** — §7.
+12. `shopping_list.addedAt` stays `new Date()`, not `serverTimestamp()` — §5.
 
 ---
 
-## 15. Home Mode — Planned But Not Yet Built
+## 15. Open / Discussed but Not Built
 
-- Wire `autoDeduct: true` recurring expenses into the daily balance calculation (same pattern as big expenses — divide amount by days in period, deduct daily from `canStillSpend`)
-- Reminder/notification system for `variable` recurring expenses on their due date
-- Dashboard-level income vs. recurring expenses summary card
+**Mutual (shared) budget** — user wants the budget in settings to cover the whole group,
+not per-member. Design questions raised, answered only in part before the thread moved on:
+
+- Rollover: one shared pot vs per-member (leaning: one shared pot, needs a transaction
+  guard so two phones don't double-process)
+- Header display: group totals for everyone vs group budget with own spend
+- Whether borrow settings and big expenses become group-level
+- Migration of existing per-member `running_balance` when switching mode on
+
+Touches `todayBalance`, `myTodayTotal` (currently filters `e.uid === user.uid`),
+`processDays()`, borrow, big expenses, and the Sunday prompt.
+
+**Home Mode remaining:**
+- Wire `autoDeduct: true` recurring expenses into the daily balance (same pattern as big expenses)
+- Reminders for `variable` recurring expenses on their due date
+- Dashboard income vs. recurring-expenses summary card
+
+**Optional hardening:** budget alert in Cloud Billing (recommended, 5 min);
+Cloud Function proxy for Gemini (deferred, see §9).
 
 ---
 
 ## 16. Live URLs
 
-| Environment | URL |
-|-------------|-----|
-| DEV | https://pocket-budget-manager-dev.web.app |
+| Env | URL |
+|-----|-----|
 | PROD | https://pocket-budget-manager.web.app |
+| DEV | https://pocket-budget-manager-dev.web.app |
+
+Both currently run the same build: v5 teal+coral + offline support + working Gemini key.
+
+---
+
+## 17. Working Style
+
+- Terse replies, no filler. Code and commit messages written normally.
+- Deploy to PROD by default unless DEV is stated.
+- Don't touch API keys — hand the user the exact command and let them run it.
+- Verify claims against the live site or a real test, not memory — every wrong assumption
+  in this project's history came from trusting local state without checking.
