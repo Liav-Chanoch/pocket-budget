@@ -1924,6 +1924,7 @@ function ShoppingListTab({ groupId, user, currency, groupCurrency, country: init
           )}
         </div>
 
+        <div className="shopping-items-scroll">
         {visibleItems.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon"><ListIcon size={40} strokeWidth={1} /></div>
@@ -1985,6 +1986,7 @@ function ShoppingListTab({ groupId, user, currency, groupCurrency, country: init
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* ── Estimation panel docked below list ── */}
@@ -4606,8 +4608,10 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
         ))}
       </div>
 
-      {tab === t.tabExpenses && <ExpensesTab expenses={expenses} user={user} currency={currency} onDelete={deleteExpense} onPhotoClick={setLightboxPhoto} onReassign={setReassignExp} onAddPhoto={handleAddExpensePhoto} allMembers={allMembers} t={t} lang={lang} viewMode={viewMode} onViewModeChange={setViewMode} />}
-      {tab === t.tabShopping && <ShoppingListTab groupId={groupId} user={user} currency={currency} groupCurrency={group.currency} country={group.country || 'de'} onCountryChange={c => updateDoc(doc(db, 'groups', groupId), { country: c })} estimation={shoppingEstimation} onEstimationChange={setShoppingEstimation} estimationOpen={shoppingEstimationOpen} onEstimationOpenChange={setShoppingEstimationOpen} t={t} onOpenOtherLists={() => setShowOtherLists(true)} />}
+      <div className="tab-content-wrap">
+        {tab === t.tabExpenses && <ExpensesTab expenses={expenses} user={user} currency={currency} onDelete={deleteExpense} onPhotoClick={setLightboxPhoto} onReassign={setReassignExp} onAddPhoto={handleAddExpensePhoto} allMembers={allMembers} t={t} lang={lang} viewMode={viewMode} onViewModeChange={setViewMode} />}
+        {tab === t.tabShopping && <ShoppingListTab groupId={groupId} user={user} currency={currency} groupCurrency={group.currency} country={group.country || 'de'} onCountryChange={c => updateDoc(doc(db, 'groups', groupId), { country: c })} estimation={shoppingEstimation} onEstimationChange={setShoppingEstimation} estimationOpen={shoppingEstimationOpen} onEstimationOpenChange={setShoppingEstimationOpen} t={t} onOpenOtherLists={() => setShowOtherLists(true)} />}
+      </div>
 
       {showSettings && (
         <div className="settings-page">
