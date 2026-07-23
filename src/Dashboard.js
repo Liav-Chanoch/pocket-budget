@@ -131,15 +131,15 @@ function ExpenseItem({ exp, user, currency, onDelete, onPhotoClick, onReassign, 
       </div>
       <div className="expense-info">
         <div className="expense-name">
-          {exp.description}
+          <span className="expense-name-text">{exp.description}</span>
           {exp.quantity > 1 && (
-            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginLeft: '0.25rem' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginLeft: '0.25rem', flexShrink: 0 }}>
               ×{exp.quantity}
             </span>
           )}
           <span
             className={`who-badge${exp.uid === user.uid ? ' who-badge--own' : ' who-badge--other'}`}
-            style={{ cursor: canReassign ? 'pointer' : 'default' }}
+            style={{ cursor: canReassign ? 'pointer' : 'default', flexShrink: 0 }}
             onClick={canReassign ? () => onReassign(exp) : undefined}
           >
             {(exp.addedBy || '?').split(' ')[0]}
@@ -3358,6 +3358,11 @@ function ReceiptReviewModal({ result, members, user, currency, groupId, today, i
 
   const checked = items.filter(it => it.checked);
   const checkedTotal = checked.reduce((s, it) => s + (parseFloat(it.price) || 0), 0);
+  const totalsByOwner = checked.reduce((acc, it) => {
+    acc[it.ownerUid] = (acc[it.ownerUid] || 0) + (parseFloat(it.price) || 0);
+    return acc;
+  }, {});
+  const ownerUids = Object.keys(totalsByOwner);
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -3506,9 +3511,22 @@ function ReceiptReviewModal({ result, members, user, currency, groupId, today, i
             <input className="settings-input" value={singleName} onChange={e => setSingleName(e.target.value)}
               style={{ width: '100%', marginBottom: '0.65rem', fontSize: '0.82rem' }} />
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: ownerUids.length > 1 ? '0.4rem' : '0.6rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{t.receiptSelectedTotal} {displayCurrency}{checkedTotal.toFixed(2)}</span>
           </div>
+          {ownerUids.length > 1 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.6rem' }}>
+              {ownerUids.map(uid => {
+                const m = members.find(mm => mm.uid === uid);
+                const name = uid === user.uid ? t.receiptYouLabel : (m?.displayName || m?.uid || '?').split(' ')[0];
+                return (
+                  <span key={uid} style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', background: 'var(--color-chip-bg)', borderRadius: 8, padding: '0.2rem 0.55rem' }}>
+                    {name}: {displayCurrency}{totalsByOwner[uid].toFixed(2)}
+                  </span>
+                );
+              })}
+            </div>
+          )}
           <button className="btn-primary" style={{ width: '100%', marginBottom: '0.5rem', touchAction: 'manipulation' }}
             disabled={checked.length === 0}
             onClick={() => onConfirm({ items, saveMode, singleName, storeName, total: checkedTotal, receiptCurrency, receiptDate: selectedDate })}>
@@ -4573,7 +4591,7 @@ export default function Dashboard({ user, groupId, group, memberData, onLogout }
         )}
       </div>
 
-      {todayBalance < 0 && (
+      {canStillSpend <= 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: '0.5rem 1rem 0', padding: '0.5rem 0.85rem', background: 'rgba(255,107,107,0.12)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10, fontSize: '0.82rem', color: '#ff9999' }}>
           <AlertTriangle size={13} style={{ flexShrink: 0 }} />
           {t.overBudgetWarning(`${currency}${Math.abs(todayBalance).toFixed(2)}`)}

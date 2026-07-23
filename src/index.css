@@ -152,6 +152,9 @@ body {
   padding: calc(env(safe-area-inset-top, 0px) + 1.2rem) 1.2rem 1rem;
   border-bottom-left-radius: 18px;
   border-bottom-right-radius: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 .header-top {
   display: flex; justify-content: space-between;
@@ -385,8 +388,11 @@ body {
 }
 .expense-info { flex: 1; min-width: 0; }
 .expense-name {
+  display: flex; align-items: baseline; min-width: 0;
   font-weight: 700; font-size: 0.9rem;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.expense-name-text {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 .expense-meta  { font-size: 0.72rem; color: var(--color-text-secondary); margin-top: 0.1rem; }
 .expense-amount { font-weight: 700; font-size: 0.95rem; color: var(--color-accent-red); flex-shrink: 0; }
