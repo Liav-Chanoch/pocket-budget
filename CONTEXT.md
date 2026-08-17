@@ -31,7 +31,7 @@
 
 ### Known open issues
 - **PWA cache**: users report not seeing updates without reinstall. Service worker (`public/service-worker.js`) updated to clear old caches on activate, and in-app "Refresh app" button calls `reg.update()` + `reload(true)`. Still flaky — incognito always works. Not fully solved.
-- **Old API key in git history** (commit `ce3abe2`): `.env` was committed May 24, key later revoked. New key in local `.env` + GitHub secret. History not cleaned.
+- ~~Old API key in git history~~ **Resolved 2026-08-18:** the old key was revoked back in May, and `.env` plus the `.firebase/` build cache have since been purged from every commit via `git filter-branch`. `.env` is now gitignored with `.env.example` as the committed template. Current key lives in local `.env` + GitHub secret only.
 - Pre-existing eslint warnings (unused vars, duplicate `moveToShared` key). CI uses `CI: false` so they don't block.
 
 ### Git / deploy state

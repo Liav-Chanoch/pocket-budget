@@ -1,70 +1,103 @@
-# Getting Started with Create React App
+# Pocket Budget
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A shared budgeting PWA for couples and small groups — split daily spending, scan receipts
+with AI, and keep a running balance that rolls over day to day.
 
-## Available Scripts
+**Live:** https://pocket-budget-manager.web.app
 
-In the project directory, you can run:
+Built as a real tool for tracking a shared travel budget, then extended into a household
+expense manager. Bilingual (English / Hebrew RTL), installable, and works offline.
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## What it does
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+**Shared daily budget with rollover.** Each member has a running balance. Underspend today
+and tomorrow's balance grows; overspend and it shrinks. The app never blocks an expense —
+it warns inline and shows a persistent banner when a balance goes negative.
 
-### `npm test`
+**AI receipt scanning.** Point the camera at a receipt (or upload a photo) and Gemini
+extracts line items, store, total, and date. A review sheet lets you correct items,
+assign them per member, and split totals before anything is written. Duplicate receipts
+scanned within 30 days are flagged.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+**Groups and invites.** Create a group, share an invite code, and everyone sees the same
+expenses, shopping lists, and notes in real time via Firestore listeners.
 
-### `npm run build`
+**Two modes.** *Trip mode* is a daily allowance with rollover. *Household mode* adds
+income tracking and recurring expenses with fixed (auto-deducted) or variable (reminder
+only) types, monthly or weekly, split equally or by custom per-member amount.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+**Also:** category stats with hand-rolled SVG donut and trend charts, per-member savings
+boxes, big expenses amortized across N days, shared and personal shopping lists with
+price estimates, a personal product price catalog, shared group notes, and multi-currency
+with FX conversion.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Stack
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+| | |
+|---|---|
+| Frontend | React 18 (Create React App), CSS variables for theming, `lucide-react` icons |
+| Backend | Firebase — Auth (email/password), Firestore with offline persistence, Hosting |
+| AI | Google Gemini 2.5 Flash (`generativelanguage` REST API) for receipt OCR and price estimation |
+| Charts | Custom SVG components, no charting library |
+| i18n | Hand-rolled EN/HE context with full RTL layout support |
+| PWA | Service worker with cache invalidation on activate, installable manifest |
 
-### `npm run eject`
+No component library and no charting library — the UI, the charts, and the i18n layer are
+all built from scratch.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Running locally
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm install
+cp .env.example .env    # then add your own Gemini API key
+npm start
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Firestore emulators (auth `9099`, firestore `8080`, UI `4000`) are configured in
+`firebase.json`:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+npx firebase-tools emulators:start
+```
 
-## Learn More
+### Environment
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+| Variable | Purpose |
+|---|---|
+| `REACT_APP_GEMINI_API_KEY` | Google AI Studio key for receipt scanning and price estimates |
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Firebase web config lives in `src/firebase.js`. Those values are public identifiers by
+design — access control is enforced entirely by `firestore.rules`, not by hiding the config.
 
-### Code Splitting
+## Deploying
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```bash
+npm run build && npx firebase-tools deploy --only hosting --project pocket-budget-manager
+```
 
-### Analyzing the Bundle Size
+`.github/workflows/deploy-dev.yml` auto-deploys pushes to the dev project. Production
+deploys are manual and deliberate.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Layout
 
-### Making a Progressive Web App
+```
+src/
+  App.js              auth gate → GroupSetup or Dashboard
+  AuthScreen.js       email/password sign in and sign up
+  GroupSetup.js       create group or join by invite code
+  Dashboard.js        all tabs, pages, and modals (see CONTEXT.md for the component map)
+  receiptService.js   Gemini calls — receipt OCR, price estimation
+  pricedb.js          local price reference data
+  i18n.js             EN/HE strings
+  firebase.js         SDK init + offline persistence
+firestore.rules       per-group access control
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+`Dashboard.js` is large and intentionally single-file; `CONTEXT.md` carries a component
+map with line offsets and the architectural notes.
 
-### Advanced Configuration
+## License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Personal project. Not licensed for reuse.
