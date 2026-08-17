@@ -65,7 +65,7 @@ berlin-budget/
 └── src/
     ├── App.js                    # Auth gate → GroupSetup or Dashboard; useAutoUpdate()
     ├── AuthScreen.js
-    ├── Dashboard.js              # ~4890 lines — ALL UI components live here
+    ├── Dashboard.js              # ~4910 lines — ALL UI components live here
     ├── GroupSetup.js
     ├── LanguageContext.js        # EN/HE context
     ├── firebase.js               # init + Firestore offline persistence (§11)
@@ -218,18 +218,24 @@ Line numbers as of 2026-07-22 — they drift, grep the name instead.
 | 1037 | `SettingsTab` |
 | 1327 | `ProductsTab` |
 | 1547 | `ShoppingListTab` — Quick List |
-| 2222 | `OtherListDetail` (duplicates much of ShoppingListTab — edit both) |
+| 2224 | `OtherListDetail` (duplicates much of ShoppingListTab — edit both) |
 | 2534 / 2627 | `OtherListsPage` / `MyListsPage` |
 | 2784 | `NotesPage` |
 | 2869 | `IncomePage` — HOME MODE |
 | 3050 | `RecurringExpensesPage` — HOME MODE |
-| 3320 | `ReceiptReviewModal` |
+| 3322 | `ReceiptReviewModal` — shows per-owner subtotals when items span >1 member |
 | 3555 | `AvailableInfoPopup` |
 | 3642 | `BigExpenseSheet` |
-| 3865 | **Main `Dashboard`** — all state, effects, render tree |
+| 3885 | **Main `Dashboard`** — all state, effects, render tree |
 
 `ShoppingListTab` and `OtherListDetail` contain near-identical logic (add item, buy,
 delete, estimate). **A change to one almost always belongs in the other.**
+
+**Scroll layout (added ~2026-07-22):** headers/filter bars stay fixed; only the item
+lists scroll. Expenses and Quick List each wrap their list in a scroll container
+(`.tab-content-wrap`, `.shopping-items-scroll` in `index.css`, both with
+`-webkit-overflow-scrolling: touch` for iOS momentum). If you add a new tab with a long
+list, follow the same pattern or the whole page scrolls under the header.
 
 ---
 
@@ -248,6 +254,13 @@ const canStillSpend  = Math.max(0, todayBalance + dailyBudget * borrowFraction);
 
 Rollover runs client-side in a `useEffect` in `Dashboard`, walking each unprocessed day
 from `last_day_processed` to yesterday and writing `/daily_records`.
+
+**Over-budget banner** (Dashboard.js ~4596) gates on `canStillSpend <= 0`, **not**
+`todayBalance < 0`. This is deliberate and borrow-aware: with borrow enabled, the banner
+stays hidden until the borrow allowance is also spent. (Earlier it used `todayBalance < 0`
+and wrongly fired while borrow still had room — that was the original bug that opened the
+2026-07-22 session. Do not revert it to a balance check.) A second per-item over-budget
+warning lives in the add-expense flow (~4833).
 
 **Known limitation:** rollover is per-member and each client writes only its own member
 doc. A shared/mutual budget (one pot for the whole group) would need a transaction plus
@@ -343,17 +356,19 @@ often not enough; remove from home screen and re-add.
 | `Dashboard.js` | 4064 | `inOverdraft` unused |
 | `i18n.js` | 164, 484 | duplicate key `moveToShared` |
 
-`inOverdraft` is computed but never rendered — there is **no** "over today's budget"
-banner in the code despite one appearing in old screenshots. That banner is from a stale
-cached build.
+`inOverdraft` (Dashboard.js:4084) is computed but never used — the over-budget banner
+gates on `canStillSpend`, not `inOverdraft`. Safe to leave or delete.
 
 ---
 
 ## 13. Git State
 
 - **Branch:** `feature/quantities-discounts`
-- **HEAD:** `b389e65 fix: surface Gemini API error message instead of bare status code`
-- Prior: `3aaab91 feat: restore v5 teal+coral design, add offline support`
+- **HEAD:** `1ebbfca fix: cart estimation panel dead space, iOS momentum-scroll stall`
+- Recent: `3ffdd1a` (fixed search/filter bars, scroll containment),
+  `156cdf2` (sticky expense header, owner-badge clipping, receipt owner-split totals,
+  borrow-aware over-budget banner), `424f892` (this doc), `3aaab91` (v5 design + offline).
+- Working tree clean (only `.firebase/hosting.*.cache`, a deploy artifact, ever shows dirty).
 - Git is a save-point system here, not a PR workflow.
 - **No remote.** The repo exists only on this machine.
 
